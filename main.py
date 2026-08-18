@@ -1,3 +1,19 @@
+import subprocess
+import sys
+
+# Автоматическая установка недостающих модулей прямо при старте
+def install_requirements():
+    required = ["aiogram==3.15.0", "aiosqlite==0.20.0", "aiohttp==3.10.11"]
+    for package in required:
+        try:
+            mod_name = package.split("==")[0]
+            __import__(mod_name)
+        except ImportError:
+            print(f"📦 Устанавливаем {package}...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+install_requirements()
+
 import os
 import logging
 import asyncio
@@ -11,7 +27,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 logging.basicConfig(level=logging.INFO)
 
-# Твои данные жестко прописаны в коде
 BOT_TOKEN = "8923920954:AAGpJQyWtwCjeO8mR2s4RW9TeSnPm-UQ12Q"
 ADMIN_ID = 8735103964
 
