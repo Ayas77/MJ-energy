@@ -1,309 +1,199 @@
-import asyncio
+import os
 import logging
-from aiogram import Bot, Dispatcher, F
-from aiogram.filters import Command, CommandStart, CommandObject
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.enums import ParseMode
-from aiogram.client.default import DefaultBotProperties
+import asyncio
 import aiosqlite
-from datetime import datetime
-
-# ================== НАСТРОЙКИ ==================
-BOT_TOKEN = "8923920954:AAGpJQyWtwCjeO8mR2s4RW9TeSnPm-UQ12Q"
-ADMIN_ID = 8735103964
-DEFAULT_PERCENT = 40
-# ===============================================
+from aiogram import Bot, Dispatcher, F, types
+from aiogram.filters import CommandStart, CommandObject
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-dp = Dispatcher()
 
-# ---------- Переводы ----------
+# Твои данные жестко прописаны в коде
+BOT_TOKEN = "8923920954:AAGpJQyWtwCjeO8mR2s4RW9TeSnPm-UQ12Q"
+ADMIN_ID = 8735103964
+
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher(storage=MemoryStorage())
+
+class AdminState(StatesGroup):
+    waiting_for_reply = State()
+
 TEXTS = {
-    "ru": {
-        "choose_lang": "Выберите язык / Dil saýlaň / Choose language:",
-        "welcome": "Привет, <b>{name}</b>!\n\nЭто бот для работы с VPN.\nНапиши сюда любой вопрос — я отвечу.",
-        "my_stats_btn": "📊 Моя статистика",
-        "my_link_btn": "🔗 Моя реферальная ссылка",
-        "change_lang_btn": "🌐 Сменить язык",
-        "your_link": "🔗 Твоя реферальная ссылка:\n\n<code>{link}</code>\n\nОтправляй её друзьям. Все, кто перейдёт по ней, закрепятся за тобой.",
-        "stats": "📊 <b>Твоя статистика</b>\n\nПриглашено человек: <b>{count}</b>\nТвой процент: <b>{percent}%</b>\n\nКогда твои люди будут оплачивать — тебе будет начисляться {percent}%.",
-        "lang_changed": "✅ Язык изменён на русский",
-        "new_referral": "🆕 Новый реферал!\n\nЧеловек: <b>{name}</b> (@{username})\nID: <code>{user_id}</code>\nПригласил: <b>{ref_name}</b> (ID: <code>{ref_id}</code>)",
-        "msg_header": "💬 Сообщение от клиента\n\nИмя: <b>{name}</b>\nЮзернейм: @{username}\nID: <code>{user_id}</code>\nРеферер: {referrer_info}\n─────────────────",
+    'ru': {
+        'welcome': "👋 Здравствуйте! Выберите язык / Select language / Dil saýlaň:",
+        'lang_set': "✅ Язык установлен: Русский.\nНапишите ваше сообщение, и оператор ответит вам в ближайшее время.",
+        'msg_sent': "📩 Ваше сообщение отправлено оператору. Ожидайте ответа!",
+        'ref_info': "🔗 **Ваша реферальная ссылка:**\n{link}\n\n👥 Приглашено: {count} чел.",
+        'btn_ref': "🔗 Реферальная ссылка",
+        'btn_lang': "🌐 Язык / Language / Dil"
     },
-    "tk": {
-        "choose_lang": "Dil saýlaň / Выберите язык / Choose language:",
-        "welcome": "Salam, <b>{name}</b>!\n\nBu VPN bilen işlemäge niýetlenen bot.\nIslendik soragyňyzy ýazyň — men jogap bererin.",
-        "my_stats_btn": "📊 Mening statistikam",
-        "my_link_btn": "🔗 Mening referal baglanyşygym",
-        "change_lang_btn": "🌐 Dili üýtgetmek",
-        "your_link": "🔗 Seniň referal baglanyşygyň:\n\n<code>{link}</code>\n\nDostlaryňa iber. Şu baglanyşyk bilen girenler saňa berkarar bolar.",
-        "stats": "📊 <b>Seniň statistikasyň</b>\n\nÇagyrylan adamlar: <b>{count}</b>\nSeniň göterimiň: <b>{percent}%</b>\n\nAdamlar töleg edeninde saňa {percent}% hasaplanar.",
-        "lang_changed": "✅ Dil türkmen diline üýtgedildi",
-        "new_referral": "🆕 Täze referal!\n\nAdam: <b>{name}</b> (@{username})\nID: <code>{user_id}</code>\nÇagyran: <b>{ref_name}</b> (ID: <code>{ref_id}</code>)",
-        "msg_header": "💬 Müşderiden hat\n\nAdy: <b>{name}</b>\nUlanyjy ady: @{username}\nID: <code>{user_id}</code>\nReferal: {referrer_info}\n─────────────────",
+    'en': {
+        'welcome': "👋 Hello! Select language / Выберите язык / Dil saýlaň:",
+        'lang_set': "✅ Language set: English.\nSend your message here, and an operator will respond shortly.",
+        'msg_sent': "📩 Your message has been sent to the operator. Please wait for a reply!",
+        'ref_info': "🔗 **Your referral link:**\n{link}\n\n👥 Invited: {count} users",
+        'btn_ref': "🔗 Referral Link",
+        'btn_lang': "🌐 Language / Язык / Dil"
     },
-    "en": {
-        "choose_lang": "Choose language / Dil saýlaň / Выберите язык:",
-        "welcome": "Hello, <b>{name}</b>!\n\nThis is a VPN service bot.\nWrite any question — I will reply.",
-        "my_stats_btn": "📊 My statistics",
-        "my_link_btn": "🔗 My referral link",
-        "change_lang_btn": "🌐 Change language",
-        "your_link": "🔗 Your referral link:\n\n<code>{link}</code>\n\nShare it with friends. Everyone who joins via this link will be assigned to you.",
-        "stats": "📊 <b>Your statistics</b>\n\nInvited people: <b>{count}</b>\nYour percent: <b>{percent}%</b>\n\nWhen your people pay, you will receive {percent}%.",
-        "lang_changed": "✅ Language changed to English",
-        "new_referral": "🆕 New referral!\n\nUser: <b>{name}</b> (@{username})\nID: <code>{user_id}</code>\nInvited by: <b>{ref_name}</b> (ID: <code>{ref_id}</code>)",
-        "msg_header": "💬 Message from client\n\nName: <b>{name}</b>\nUsername: @{username}\nID: <code>{user_id}</code>\nReferrer: {referrer_info}\n─────────────────",
+    'tk': {
+        'welcome': "👋 Salam! Dil saýlaň / Выберите язык / Select language:",
+        'lang_set': "✅ Dil saýlandy: Türkmen dili.\nHatyňyzy ýazyň, оператор сизге tiz арада jogap берер.",
+        'msg_sent': "📩 Hatyňyz оператора ugradyldy. Jogaba garaşyň!",
+        'ref_info': "🔗 **Siziň referal salgyňyz:**\n{link}\n\n👥 Çagyrylanlar: {count} adam",
+        'btn_ref': "🔗 Referal salgy",
+        'btn_lang': "🌐 Dil / Language / Язык"
     }
 }
 
-def t(lang: str, key: str, **kwargs):
-    lang = lang if lang in TEXTS else "ru"
-    text = TEXTS[lang].get(key, TEXTS["ru"].get(key, key))
-    return text.format(**kwargs) if kwargs else text
-
-# ---------- База данных ----------
 async def init_db():
-    async with aiosqlite.connect("bot.db") as db:
+    async with aiosqlite.connect("bot_database.db") as db:
         await db.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id INTEGER PRIMARY KEY,
                 username TEXT,
-                full_name TEXT,
                 referrer_id INTEGER,
-                percent REAL DEFAULT 40,
-                lang TEXT DEFAULT 'ru',
-                created_at TEXT
+                language TEXT DEFAULT 'ru'
             )
         """)
         await db.commit()
 
-async def add_user(user_id: int, username: str, full_name: str, referrer_id: int = None):
-    async with aiosqlite.connect("bot.db") as db:
-        await db.execute(
-            "INSERT OR IGNORE INTO users (user_id, username, full_name, referrer_id, percent, lang, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (user_id, username, full_name, referrer_id, DEFAULT_PERCENT, "ru", datetime.now().isoformat())
-        )
-        await db.commit()
-
-async def get_user(user_id: int):
-    async with aiosqlite.connect("bot.db") as db:
-        async with db.execute("SELECT user_id, username, full_name, referrer_id, percent, lang FROM users WHERE user_id = ?", (user_id,)) as cursor:
-            return await cursor.fetchone()
-
-async def set_lang(user_id: int, lang: str):
-    async with aiosqlite.connect("bot.db") as db:
-        await db.execute("UPDATE users SET lang = ? WHERE user_id = ?", (lang, user_id))
-        await db.commit()
-
-async def get_referrals_count(user_id: int):
-    async with aiosqlite.connect("bot.db") as db:
-        async with db.execute("SELECT COUNT(*) FROM users WHERE referrer_id = ?", (user_id,)) as cursor:
-            row = await cursor.fetchone()
-            return row[0] if row else 0
-
-async def set_percent(user_id: int, percent: float):
-    async with aiosqlite.connect("bot.db") as db:
-        await db.execute("UPDATE users SET percent = ? WHERE user_id = ?", (percent, user_id))
-        await db.commit()
-
-async def get_all_referrers():
-    async with aiosqlite.connect("bot.db") as db:
-        async with db.execute("""
-            SELECT u.user_id, u.username, u.full_name, u.percent, COUNT(r.user_id) as refs
-            FROM users u
-            LEFT JOIN users r ON r.referrer_id = u.user_id
-            GROUP BY u.user_id
-            HAVING refs > 0
-            ORDER BY refs DESC
-        """) as cursor:
-            return await cursor.fetchall()
-
-# ---------- Клавиатуры ----------
-def lang_kb():
+def get_lang_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🇷🇺 Русский", callback_data="lang_ru"),
-            InlineKeyboardButton(text="🇹🇲 Türkmen", callback_data="lang_tk"),
-            InlineKeyboardButton(text="🇬🇧 English", callback_data="lang_en"),
+            InlineKeyboardButton(text="🇷🇺 Русский", callback_data="setlang_ru"),
+            InlineKeyboardButton(text="🇬🇧 English", callback_data="setlang_en"),
+            InlineKeyboardButton(text="🇹🇲 Türkmen", callback_data="setlang_tk")
         ]
     ])
 
-def main_kb(lang: str):
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=t(lang, "my_stats_btn"), callback_data="my_stats")],
-        [InlineKeyboardButton(text=t(lang, "my_link_btn"), callback_data="my_link")],
-        [InlineKeyboardButton(text=t(lang, "change_lang_btn"), callback_data="change_lang")],
-    ])
+def get_main_keyboard(lang):
+    return types.ReplyKeyboardMarkup(
+        keyboard=[
+            [types.KeyboardButton(text=TEXTS[lang]['btn_ref']), types.KeyboardButton(text=TEXTS[lang]['btn_lang'])]
+        ],
+        resize_keyboard=True
+    )
 
-# ---------- Хендлеры ----------
 @dp.message(CommandStart())
-async def cmd_start(message: Message, command: CommandObject):
-    user = message.from_user
+async def start_cmd(message: types.Message, command: CommandObject):
+    user_id = message.from_user.id
+    username = message.from_user.username or "NoUsername"
     referrer_id = None
 
     if command.args and command.args.startswith("ref_"):
         try:
-            referrer_id = int(command.args.split("_")[1])
-            if referrer_id == user.id:
-                referrer_id = None
-        except:
-            referrer_id = None
-
-    await add_user(user.id, user.username, user.full_name, referrer_id)
-
-    # Уведомление админу о новом реферале
-    if referrer_id:
-        try:
-            ref_user = await get_user(referrer_id)
-            ref_name = ref_user[2] if ref_user else str(referrer_id)
-            await bot.send_message(
-                ADMIN_ID,
-                t("ru", "new_referral",
-                  name=user.full_name,
-                  username=user.username or "нет",
-                  user_id=user.id,
-                  ref_name=ref_name,
-                  ref_id=referrer_id)
-            )
-        except:
+            possible_ref = int(command.args.split("_")[1])
+            if possible_ref != user_id:
+                referrer_id = possible_ref
+        except ValueError:
             pass
 
-    # Проверяем, выбран ли уже язык
-    db_user = await get_user(user.id)
-    if db_user and db_user[5] and db_user[5] != "ru":  # если язык уже не дефолтный
-        lang = db_user[5]
-        await message.answer(t(lang, "welcome", name=user.full_name), reply_markup=main_kb(lang))
-    else:
-        await message.answer(t("ru", "choose_lang"), reply_markup=lang_kb())
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT user_id, language FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            user = await cursor.fetchone()
+            if not user:
+                await db.execute(
+                    "INSERT INTO users (user_id, username, referrer_id, language) VALUES (?, ?, ?, ?)",
+                    (user_id, username, referrer_id, 'ru')
+                )
+                await db.commit()
+                lang = 'ru'
+            else:
+                lang = user[1]
 
-@dp.callback_query(F.data.startswith("lang_"))
-async def set_language(callback: CallbackQuery):
+    await message.answer(TEXTS[lang]['welcome'], reply_markup=get_lang_keyboard())
+
+@dp.callback_query(F.data.startswith("setlang_"))
+async def set_language(callback: types.CallbackQuery):
     lang = callback.data.split("_")[1]
-    await set_lang(callback.from_user.id, lang)
-    await callback.message.edit_text(t(lang, "lang_changed"))
-    await callback.message.answer(
-        t(lang, "welcome", name=callback.from_user.full_name),
-        reply_markup=main_kb(lang)
+    user_id = callback.from_user.id
+
+    async with aiosqlite.connect("bot_database.db") as db:
+        await db.execute("UPDATE users SET language = ? WHERE user_id = ?", (lang, user_id))
+        await db.commit()
+
+    await callback.message.delete()
+    await callback.message.answer(TEXTS[lang]['lang_set'], reply_markup=get_main_keyboard(lang))
+
+@dp.message(F.text.in_(["🔗 Реферальная ссылка", "🔗 Referral Link", "🔗 Referal salgy"]))
+async def ref_handler(message: types.Message):
+    user_id = message.from_user.id
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT language FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            lang = row[0] if row else 'ru'
+
+        async with db.execute("SELECT COUNT(*) FROM users WHERE referrer_id = ?", (user_id,)) as cursor:
+            count = (await cursor.fetchone())[0]
+
+    bot_info = await bot.get_me()
+    ref_link = f"https://t.me/{bot_info.username}?start=ref_{user_id}"
+    await message.answer(TEXTS[lang]['ref_info'].format(link=ref_link, count=count), parse_mode="Markdown")
+
+@dp.message(F.text.in_(["🌐 Язык / Language / Dil"]))
+async def change_lang_handler(message: types.Message):
+    await message.answer("Выберите язык / Select language / Dil saýlaň:", reply_markup=get_lang_keyboard())
+
+@dp.message(F.chat.type == "private", F.from_user.id != ADMIN_ID)
+async def forward_to_admin(message: types.Message):
+    user_id = message.from_user.id
+    username = f"@{message.from_user.username}" if message.from_user.username else "Отсутствует"
+
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT referrer_id, language FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            user_data = await cursor.fetchone()
+            referrer_id = user_data[0] if user_data else None
+            lang = user_data[1] if user_data else 'ru'
+
+    referrer_info = "Прямой заход (без реферала)"
+    if referrer_id:
+        async with aiosqlite.connect("bot_database.db") as db:
+            async with db.execute("SELECT username FROM users WHERE user_id = ?", (referrer_id,)) as cursor:
+                ref_user = await cursor.fetchone()
+                ref_name = f"@{ref_user[0]}" if ref_user and ref_user[0] != "NoUsername" else f"ID: {referrer_id}"
+                referrer_info = f"Партнер: {ref_name} (ID: `{referrer_id}`) — **40%**"
+
+    admin_caption = (
+        f"📩 **Новое обращение!**\n\n"
+        f"👤 **От:** {username} (ID: `{user_id}`)\n"
+        f"🤝 **Источник:** {referrer_info}\n"
+        f"🌐 **Язык:** {lang.upper()}\n\n"
+        f"💬 **Текст:** {message.text}"
     )
-    await callback.answer()
 
-@dp.callback_query(F.data == "change_lang")
-async def change_lang(callback: CallbackQuery):
-    await callback.message.answer(t("ru", "choose_lang"), reply_markup=lang_kb())
-    await callback.answer()
-
-@dp.message(Command("lang"))
-async def cmd_lang(message: Message):
-    await message.answer(t("ru", "choose_lang"), reply_markup=lang_kb())
-
-@dp.callback_query(F.data == "my_link")
-async def my_link(callback: CallbackQuery):
-    user = await get_user(callback.from_user.id)
-    lang = user[5] if user else "ru"
-    link = f"https://t.me/mjenergy_bot?start=ref_{callback.from_user.id}"
-    await callback.message.answer(t(lang, "your_link", link=link))
-    await callback.answer()
-
-@dp.callback_query(F.data == "my_stats")
-async def my_stats(callback: CallbackQuery):
-    user = await get_user(callback.from_user.id)
-    lang = user[5] if user else "ru"
-    count = await get_referrals_count(callback.from_user.id)
-    percent = user[4] if user else DEFAULT_PERCENT
-
-    await callback.message.answer(t(lang, "stats", count=count, percent=percent))
-    await callback.answer()
-
-# ---------- Все сообщения → админу ----------
-@dp.message(F.chat.type == "private")
-async def forward_to_admin(message: Message):
-    if message.from_user.id == ADMIN_ID:
-        return
-
-    user = await get_user(message.from_user.id)
-    referrer_info = "Без реферера"
-
-    if user and user[3]:
-        ref = await get_user(user[3])
-        if ref:
-            referrer_info = f"{ref[2]} (@{ref[1] or 'нет'}) | ID: <code>{ref[0]}</code> | {ref[4]}%"
-
-    header = t("ru", "msg_header",
-               name=message.from_user.full_name,
-               username=message.from_user.username or "нет",
-               user_id=message.from_user.id,
-               referrer_info=referrer_info)
-
-    try:
-        await bot.send_message(ADMIN_ID, header)
-        await message.forward(ADMIN_ID)
-    except Exception as e:
-        logging.error(f"Ошибка пересылки: {e}")
-
-# ---------- Админ ----------
-@dp.message(Command("admin"))
-async def admin_panel(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="👥 Рефереры", callback_data="admin_refs")],
-        [InlineKeyboardButton(text="📈 Статистика", callback_data="admin_stats")],
+    reply_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💬 Ответить клиенту", callback_data=f"reply_{user_id}")]
     ])
-    await message.answer("Админ-панель:", reply_markup=kb)
 
-@dp.callback_query(F.data == "admin_refs")
-async def admin_refs(callback: CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
-        return
-    refs = await get_all_referrers()
-    if not refs:
-        await callback.message.answer("Пока нет рефереров с людьми.")
-        await callback.answer()
-        return
+    await bot.send_message(chat_id=ADMIN_ID, text=admin_caption, parse_mode="Markdown", reply_markup=reply_kb)
+    await message.answer(TEXTS[lang]['msg_sent'])
 
-    text = "👥 <b>Рефереры:</b>\n\n"
-    for r in refs:
-        text += f"• {r[2]} (@{r[1] or 'нет'})\n  ID: <code>{r[0]}</code> | Людей: <b>{r[4]}</b> | Процент: <b>{r[3]}%</b>\n\n"
-    text += "\nИзменить процент:\n<code>/setpercent ID процент</code>"
-    await callback.message.answer(text)
+@dp.callback_query(F.data.startswith("reply_"), F.from_user.id == ADMIN_ID)
+async def prepare_reply(callback: types.CallbackQuery, state: FSMContext):
+    target_user_id = int(callback.data.split("_")[1])
+    await state.update_data(target_user_id=target_user_id)
+    await state.set_state(AdminState.waiting_for_reply)
+    await callback.message.answer(f"✍️ Введите ответ для пользователя `[{target_user_id}]`:")
     await callback.answer()
 
-@dp.callback_query(F.data == "admin_stats")
-async def admin_stats(callback: CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
-        return
-    async with aiosqlite.connect("bot.db") as db:
-        async with db.execute("SELECT COUNT(*) FROM users") as c:
-            total = (await c.fetchone())[0]
-        async with db.execute("SELECT COUNT(*) FROM users WHERE referrer_id IS NOT NULL") as c:
-            with_ref = (await c.fetchone())[0]
+@dp.message(AdminState.waiting_for_reply, F.from_user.id == ADMIN_ID)
+async def send_reply_to_user(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    target_user_id = data['target_user_id']
 
-    await callback.message.answer(
-        f"📈 <b>Общая статистика</b>\n\n"
-        f"Всего пользователей: <b>{total}</b>\n"
-        f"Пришли по рефке: <b>{with_ref}</b>"
-    )
-    await callback.answer()
-
-@dp.message(Command("setpercent"))
-async def cmd_setpercent(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
     try:
-        parts = message.text.split()
-        user_id = int(parts[1])
-        percent = float(parts[2])
-        await set_percent(user_id, percent)
-        await message.answer(f"✅ Процент для <code>{user_id}</code> установлен: <b>{percent}%</b>")
-    except:
-        await message.answer("Формат: <code>/setpercent ID процент</code>\nПример: /setpercent 123456789 35")
+        await bot.send_message(chat_id=target_user_id, text=f"👨‍💻 **Ответ оператора:**\n\n{message.text}", parse_mode="Markdown")
+        await message.answer("✅ Ответ успешно отправлен клиенту!")
+    except Exception as e:
+        await message.answer(f"❌ Ошибка отправки: {e}")
 
-# ---------- Запуск ----------
+    await state.clear()
+
 async def main():
     await init_db()
-    print("Бот запущен...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
