@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-# Автоматическая установка недостающих модулей прямо при старте
+# Автоматическая проверка и установка библиотек при старте
 def install_requirements():
     required = ["aiogram==3.15.0", "aiosqlite==0.20.0", "aiohttp==3.10.11"]
     for package in required:
@@ -23,7 +23,7 @@ from aiogram.filters import CommandStart, CommandObject
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
 logging.basicConfig(level=logging.INFO)
 
@@ -36,30 +36,64 @@ dp = Dispatcher(storage=MemoryStorage())
 class AdminState(StatesGroup):
     waiting_for_reply = State()
 
+# Тексты и локализация на трех языках
 TEXTS = {
     'ru': {
         'welcome': "👋 Здравствуйте! Выберите язык / Select language / Dil saýlaň:",
-        'lang_set': "✅ Язык установлен: Русский.\nНапишите ваше сообщение, и оператор ответит вам в ближайшее время.",
+        'lang_set': "✅ Язык установлен: Русский.\nВыберите действие в меню ниже или напишите сообщение оператору.",
         'msg_sent': "📩 Ваше сообщение отправлено оператору. Ожидайте ответа!",
         'ref_info': "🔗 **Ваша реферальная ссылка:**\n{link}\n\n👥 Приглашено: {count} чел.",
+        'btn_buy': "🛒 Купить VPN",
         'btn_ref': "🔗 Реферальная ссылка",
-        'btn_lang': "🌐 Язык / Language / Dil"
+        'btn_lang': "🌐 Язык / Language / Dil",
+        'tariffs_title': "⚡ **Выберите подходящий тариф VPN:**",
+        'tariff_100_btn': "📱 100 манат (1 устройство)",
+        'tariff_200_btn': "♾️ 200 манат (Бесконечно устройств)",
+        'payment_text': (
+            "💳 **Реквизиты для оплаты:**\n\n"
+            "Вы выбрали тариф: **{tariff}**\n\n"
+            "📌 **Номер для перевода / пополнения:**\n`+9936XXXXXXX`\n\n"
+            "После оплаты отправьте чек или скриншот прямо в этот чат. "
+            "Оператор проверит перевод и выдаст вам ключи доступа!"
+        )
     },
     'en': {
         'welcome': "👋 Hello! Select language / Выберите язык / Dil saýlaň:",
-        'lang_set': "✅ Language set: English.\nSend your message here, and an operator will respond shortly.",
+        'lang_set': "✅ Language set: English.\nSelect an option from the menu below or send a message to the operator.",
         'msg_sent': "📩 Your message has been sent to the operator. Please wait for a reply!",
         'ref_info': "🔗 **Your referral link:**\n{link}\n\n👥 Invited: {count} users",
+        'btn_buy': "🛒 Buy VPN",
         'btn_ref': "🔗 Referral Link",
-        'btn_lang': "🌐 Language / Язык / Dil"
+        'btn_lang': "🌐 Language / Язык / Dil",
+        'tariffs_title': "⚡ **Select your VPN plan:**",
+        'tariff_100_btn': "📱 100 TMT (1 device)",
+        'tariff_200_btn': "♾️ 200 TMT (Unlimited devices)",
+        'payment_text': (
+            "💳 **Payment details:**\n\n"
+            "Selected plan: **{tariff}**\n\n"
+            "📌 **Phone number / Payment info:**\n`+9936XXXXXXX`\n\n"
+            "After payment, please send the receipt or screenshot directly to this chat. "
+            "The operator will verify the transaction and issue your access keys!"
+        )
     },
     'tk': {
         'welcome': "👋 Salam! Dil saýlaň / Выберите язык / Select language:",
-        'lang_set': "✅ Dil saýlandy: Türkmen dili.\nHatyňyzy ýazyň, оператор сизге tiz арада jogap берер.",
+        'lang_set': "✅ Dil saýlandy: Türkmen dili.\nAşakdaky menýudan bölümi saýlaň ýa-da оператора hat ýazyň.",
         'msg_sent': "📩 Hatyňyz оператора ugradyldy. Jogaba garaşyň!",
         'ref_info': "🔗 **Siziň referal salgyňyz:**\n{link}\n\n👥 Çagyrylanlar: {count} adam",
+        'btn_buy': "🛒 VPN satyn almak",
         'btn_ref': "🔗 Referal salgy",
-        'btn_lang': "🌐 Dil / Language / Язык"
+        'btn_lang': "🌐 Dil / Language / Язык",
+        'tariffs_title': "⚡ **Töleg tarifini saýlaň:**",
+        'tariff_100_btn': "📱 100 manat (1 enjam)",
+        'tariff_200_btn': "♾️ 200 manat (Päksiz enjam)",
+        'payment_text': (
+            "💳 **Töleg maglumatlary:**\n\n"
+            "Saýlanan tarif: **{tariff}**\n\n"
+            "📌 **Töleg üçin telefon belgi:**\n`+9936XXXXXXX`\n\n"
+            "Tölegi geçireniňizden soň çeki (скриншот) şu çata ugradyň. "
+            "Оператор tölegi barlap, сизге VPN açarlaryny ugradar!"
+        )
     }
 }
 
@@ -85,12 +119,19 @@ def get_lang_keyboard():
     ])
 
 def get_main_keyboard(lang):
-    return types.ReplyKeyboardMarkup(
+    return ReplyKeyboardMarkup(
         keyboard=[
-            [types.KeyboardButton(text=TEXTS[lang]['btn_ref']), types.KeyboardButton(text=TEXTS[lang]['btn_lang'])]
+            [KeyboardButton(text=TEXTS[lang]['btn_buy'])],
+            [KeyboardButton(text=TEXTS[lang]['btn_ref']), KeyboardButton(text=TEXTS[lang]['btn_lang'])]
         ],
         resize_keyboard=True
     )
+
+def get_tariffs_keyboard(lang):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=TEXTS[lang]['tariff_100_btn'], callback_data="buy_100")],
+        [InlineKeyboardButton(text=TEXTS[lang]['tariff_200_btn'], callback_data="buy_200")]
+    ])
 
 @dp.message(CommandStart())
 async def start_cmd(message: types.Message, command: CommandObject):
@@ -133,6 +174,60 @@ async def set_language(callback: types.CallbackQuery):
     await callback.message.delete()
     await callback.message.answer(TEXTS[lang]['lang_set'], reply_markup=get_main_keyboard(lang))
 
+@dp.message(F.text.in_(["🛒 Купить VPN", "🛒 Buy VPN", "🛒 VPN satyn almak"]))
+async def buy_vpn_handler(message: types.Message):
+    user_id = message.from_user.id
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT language FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            lang = row[0] if row else 'ru'
+
+    await message.answer(TEXTS[lang]['tariffs_title'], reply_markup=get_tariffs_keyboard(lang), parse_mode="Markdown")
+
+@dp.callback_query(F.data.startswith("buy_"))
+async def process_tariff_selection(callback: types.CallbackQuery):
+    tariff_code = callback.data.split("_")[1]
+    user_id = callback.from_user.id
+    username = f"@{callback.from_user.username}" if callback.from_user.username else "Отсутствует"
+
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT referrer_id, language FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            user_data = await cursor.fetchone()
+            referrer_id = user_data[0] if user_data else None
+            lang = user_data[1] if user_data else 'ru'
+
+    tariff_name = TEXTS[lang]['tariff_100_btn'] if tariff_code == "100" else TEXTS[lang]['tariff_200_btn']
+
+    referrer_info = "Прямой заход (без реферала)"
+    if referrer_id:
+        async with aiosqlite.connect("bot_database.db") as db:
+            async with db.execute("SELECT username FROM users WHERE user_id = ?", (referrer_id,)) as cursor:
+                ref_user = await cursor.fetchone()
+                ref_name = f"@{ref_user[0]}" if ref_user and ref_user[0] != "NoUsername" else f"ID: {referrer_id}"
+                referrer_info = f"Партнер: {ref_name} (ID: `{referrer_id}`) — **40%**"
+
+    # Уведомление администратору о намерении купить
+    admin_alert = (
+        f"🛍 **ЗАЯВКА НА ПОКУПКУ VPN!**\n\n"
+        f"💳 **Тариф:** {tariff_name}\n"
+        f"👤 **Клиент:** {username} (ID: `{user_id}`)\n"
+        f"🤝 **Источник:** {referrer_info}\n"
+        f"🌐 **Язык:** {lang.upper()}"
+    )
+
+    reply_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💬 Ответить / Выдать доступ", callback_data=f"reply_{user_id}")]
+    ])
+
+    await bot.send_message(chat_id=ADMIN_ID, text=admin_alert, parse_mode="Markdown", reply_markup=reply_kb)
+
+    # Выдача реквизитов пользователю
+    await callback.message.edit_text(
+        TEXTS[lang]['payment_text'].format(tariff=tariff_name),
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
 @dp.message(F.text.in_(["🔗 Реферальная ссылка", "🔗 Referral Link", "🔗 Referal salgy"]))
 async def ref_handler(message: types.Message):
     user_id = message.from_user.id
@@ -152,8 +247,13 @@ async def ref_handler(message: types.Message):
 async def change_lang_handler(message: types.Message):
     await message.answer("Выберите язык / Select language / Dil saýlaň:", reply_markup=get_lang_keyboard())
 
-@dp.message(F.chat.type == "private", F.from_user.id != ADMIN_ID)
-async def forward_to_admin(message: types.Message):
+# Пересылка всех сообщений (чеков, фото, вопросов) админу
+@dp.message(F.chat.type == "private")
+async def forward_to_admin(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state == AdminState.waiting_for_reply.state:
+        return
+
     user_id = message.from_user.id
     username = f"@{message.from_user.username}" if message.from_user.username else "Отсутствует"
 
@@ -172,11 +272,10 @@ async def forward_to_admin(message: types.Message):
                 referrer_info = f"Партнер: {ref_name} (ID: `{referrer_id}`) — **40%**"
 
     admin_caption = (
-        f"📩 **Новое обращение!**\n\n"
+        f"📩 **Новое сообщение / Чек от клиента!**\n\n"
         f"👤 **От:** {username} (ID: `{user_id}`)\n"
         f"🤝 **Источник:** {referrer_info}\n"
-        f"🌐 **Язык:** {lang.upper()}\n\n"
-        f"💬 **Текст:** {message.text}"
+        f"🌐 **Язык:** {lang.upper()}"
     )
 
     reply_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -184,6 +283,8 @@ async def forward_to_admin(message: types.Message):
     ])
 
     await bot.send_message(chat_id=ADMIN_ID, text=admin_caption, parse_mode="Markdown", reply_markup=reply_kb)
+    await bot.copy_message(chat_id=ADMIN_ID, from_chat_id=message.chat.id, message_id=message.message_id)
+
     await message.answer(TEXTS[lang]['msg_sent'])
 
 @dp.callback_query(F.data.startswith("reply_"), F.from_user.id == ADMIN_ID)
@@ -200,8 +301,9 @@ async def send_reply_to_user(message: types.Message, state: FSMContext):
     target_user_id = data['target_user_id']
 
     try:
-        await bot.send_message(chat_id=target_user_id, text=f"👨‍💻 **Ответ оператора:**\n\n{message.text}", parse_mode="Markdown")
-        await message.answer("✅ Ответ успешно отправлен клиенту!")
+        await bot.send_message(chat_id=target_user_id, text="👨‍💻 **Ответ оператора:**", parse_mode="Markdown")
+        await bot.copy_message(chat_id=target_user_id, from_chat_id=message.chat.id, message_id=message.message_id)
+        await message.answer("✅ Ответ успешно отправлен!")
     except Exception as e:
         await message.answer(f"❌ Ошибка отправки: {e}")
 
