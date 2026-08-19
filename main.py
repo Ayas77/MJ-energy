@@ -56,7 +56,10 @@ TEXTS = {
         'payment_text': (
             "💳 **Реквизиты для оплаты:**\n\n"
             "Вы выбрали тариф: **{tariff}**\n\n"
-            "📌 **Номер для перевода / пополнения:**\n`+9936XXXXXXX`\n\n"
+            "📌 **Номера для оплаты:**\n"
+            "`+99362565792`\n"
+            "`+99361843366`\n\n"
+            "💡 *Если перевод с номера на номер не проходит — оплатите через терминал.*\n\n"
             "После оплаты нажмите кнопку **«✅ Я оплатил»** ниже и отправьте чек или скриншот прямо в этот чат."
         ),
         'share_text': "Привет! Пользуюсь отличным скоростным VPN. Держи ссылку:",
@@ -86,7 +89,10 @@ TEXTS = {
         'payment_text': (
             "💳 **Payment details:**\n\n"
             "Selected plan: **{tariff}**\n\n"
-            "📌 **Phone number / Payment info:**\n`+9936XXXXXXX`\n\n"
+            "📌 **Payment phone numbers:**\n"
+            "`+99362565792`\n"
+            "`+99361843366`\n\n"
+            "💡 *If transfer from number to number fails, pay via terminal.*\n\n"
             "After payment, click the **«✅ I have paid»** button below and send the receipt or screenshot in this chat."
         ),
         'share_text': "Hey! I'm using a fast VPN service. Here is the link:",
@@ -116,9 +122,11 @@ TEXTS = {
         'payment_text': (
             "💳 **Töleg maglumatlary:**\n\n"
             "Saýlanan tarif: **{tariff}**\n\n"
-            "📌 **Töleg üçin telefon belgi:**\n`+9936XXXXXXX`\n\n"
-            "Töleg edeniňizden soň **«✅ Men töledim»** düwmesine басыň we çeki (скриншот) şu çata ugradyň. "
-            "Оператор tölegi barlap, сизге VPN açarlaryny ugradar!"
+            "📌 **Töleg üçin telefon belgiler:**\n"
+            "`+99362565792`\n"
+            "`+99361843366`\n\n"
+            "💡 *Nomerden nomere töleg geçmese — terminal arkaly töleň.*\n\n"
+            "Töleg edeniňizden soň **«✅ Men töledim»** düwmesine басыň we çeki (скриншот) şu çata ugradyň."
         ),
         'share_text': "Salam! Men çalt VPN ulanýaryn. Şyltylary şu ýerden alyp bilersiňiz:",
         'btn_share': "📲 Dostlaryň bilen paýlaş",
