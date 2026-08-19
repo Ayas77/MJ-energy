@@ -48,7 +48,8 @@ TEXTS = {
             "🔗 **Ваша реферальная ссылка:**\n`{link}`\n\n"
             "👥 **Приглашено:** {count} чел.\n"
             "🛒 **Оплачено заказов:** {paid_count}\n"
-            "💰 **Заработано (40%):** {earned} TMT"
+            "💰 **Ваш процент:** {percent}%\n"
+            "💵 **Заработано:** {earned} TMT"
         ),
         'btn_buy': "🛒 Купить VPN",
         'btn_ref': "🔗 Реферальная ссылка",
@@ -114,7 +115,8 @@ TEXTS = {
             "🔗 **Your referral link:**\n`{link}`\n\n"
             "👥 **Invited:** {count} users\n"
             "🛒 **Paid orders:** {paid_count}\n"
-            "💰 **Earned (40%):** {earned} TMT"
+            "💰 **Your rate:** {percent}%\n"
+            "💵 **Earned:** {earned} TMT"
         ),
         'btn_buy': "🛒 Buy VPN",
         'btn_ref': "🔗 Referral Link",
@@ -172,7 +174,8 @@ TEXTS = {
             "🔗 **Siziň referal salgyňyz:**\n`{link}`\n\n"
             "👥 **Çagyrylanlar:** {count} adam\n"
             "🛒 **Tölenenen заказлар:** {paid_count}\n"
-            "💰 **Заработок (40%):** {earned} TMT"
+            "💰 **Siziň göterimiňiz:** {percent}%\n"
+            "💵 **Заработок:** {earned} TMT"
         ),
         'btn_buy': "🛒 VPN satyn almak",
         'btn_ref': "🔗 Referal salgy",
@@ -235,9 +238,15 @@ async def init_db():
                 purchases_count INTEGER DEFAULT 0,
                 last_selected_tariff INTEGER DEFAULT 100,
                 used_test INTEGER DEFAULT 0,
-                subscription_until TEXT
+                subscription_until TEXT,
+                ref_percent REAL DEFAULT 0.40
             )
         """)
+        # Миграция: если база уже существовала, добавляем колонку ref_percent
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN ref_percent REAL DEFAULT 0.40")
+        except Exception:
+            pass
         await db.commit()
 
 def get_lang_keyboard():
@@ -284,8 +293,8 @@ async def start_cmd(message: types.Message, command: CommandObject):
             user = await cursor.fetchone()
             if not user:
                 await db.execute(
-                    "INSERT INTO users (user_id, username, referrer_id, language) VALUES (?, ?, ?, ?)",
-                    (user_id, username, referrer_id, 'ru')
+                    "INSERT INTO users (user_id, username, referrer_id, language, ref_percent) VALUES (?, ?, ?, ?, ?)",
+                    (user_id, username, referrer_id, 'ru', 0.40)
                 )
                 await db.commit()
                 lang = 'ru'
@@ -395,10 +404,11 @@ async def process_tariff_selection(callback: types.CallbackQuery):
     referrer_info = "Прямой заход"
     if referrer_id:
         async with aiosqlite.connect("bot_database.db") as db:
-            async with db.execute("SELECT username FROM users WHERE user_id = ?", (referrer_id,)) as cursor:
+            async with db.execute("SELECT username, ref_percent FROM users WHERE user_id = ?", (referrer_id,)) as cursor:
                 ref_user = await cursor.fetchone()
                 ref_name = f"@{ref_user[0]}" if ref_user and ref_user[0] != "NoUsername" else f"ID: {referrer_id}"
-                referrer_info = f"Партнер: {ref_name} (ID: `{referrer_id}`) — **40%**"
+                ref_pct = int((ref_user[1] if ref_user and ref_user[1] else 0.40) * 100)
+                referrer_info = f"Партнер: {ref_name} (ID: `{referrer_id}`) — **{ref_pct}%**"
 
     admin_alert = (
         f"🛍 **ВЫБОР ТАРИФА!**\n\n"
@@ -409,7 +419,7 @@ async def process_tariff_selection(callback: types.CallbackQuery):
     )
 
     reply_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Подтвердить оплату (Начислить 40%)", callback_data=f"confirm_{user_id}_{tariff_code}")],
+        [InlineKeyboardButton(text="✅ Подтвердить оплату", callback_data=f"confirm_{user_id}_{tariff_code}")],
         [InlineKeyboardButton(text="💬 Ответить / Выдать доступ", callback_data=f"reply_{user_id}")]
     ])
 
@@ -471,7 +481,7 @@ async def user_paid_handler(callback: types.CallbackQuery):
     )
 
     reply_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Подтвердить оплату (Начислить 40%)", callback_data=f"confirm_{user_id}_{tariff_code}")],
+        [InlineKeyboardButton(text="✅ Подтвердить оплату", callback_data=f"confirm_{user_id}_{tariff_code}")],
         [InlineKeyboardButton(text="💬 Ответить / Выдать доступ", callback_data=f"reply_{user_id}")]
     ])
 
@@ -484,8 +494,9 @@ async def confirm_payment_handler(callback: types.CallbackQuery):
     user_id = int(parts[1])
     tariff_amount = int(parts[2])
 
-    reward = tariff_amount * 0.40
     until_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+    reward = 0
+    ref_percent_str = ""
 
     async with aiosqlite.connect("bot_database.db") as db:
         await db.execute(
@@ -499,6 +510,13 @@ async def confirm_payment_handler(callback: types.CallbackQuery):
             referrer_id = row[0] if row else None
 
         if referrer_id:
+            async with db.execute("SELECT ref_percent FROM users WHERE user_id = ?", (referrer_id,)) as cursor:
+                ref_row = await cursor.fetchone()
+                user_pct = ref_row[0] if (ref_row and ref_row[0]) else 0.40
+
+            reward = tariff_amount * user_pct
+            ref_percent_str = f"({int(user_pct * 100)}%)"
+
             await db.execute("UPDATE users SET earnings = earnings + ? WHERE user_id = ?", (reward, referrer_id))
             await db.commit()
 
@@ -511,10 +529,11 @@ async def confirm_payment_handler(callback: types.CallbackQuery):
             except Exception:
                 pass
 
-    await callback.message.edit_text(
-        callback.message.text + f"\n\n✅ **Оплата подтверждена!** Подписка установлена до `{until_date}`. Партнёру начислено: {int(reward)} TMT.",
-        parse_mode="Markdown"
-    )
+    msg_text = callback.message.text + f"\n\n✅ **Оплата подтверждена!** Подписка установлена до `{until_date}`."
+    if reward > 0:
+        msg_text += f" Партнёру начислено: {int(reward)} TMT {ref_percent_str}."
+
+    await callback.message.edit_text(msg_text, parse_mode="Markdown")
     await callback.answer("Оплата подтверждена!")
 
 # --- РЕФЕРАЛЬНАЯ СИСТЕМА И ВЫВОД ---
@@ -522,10 +541,11 @@ async def confirm_payment_handler(callback: types.CallbackQuery):
 async def ref_handler(message: types.Message):
     user_id = message.from_user.id
     async with aiosqlite.connect("bot_database.db") as db:
-        async with db.execute("SELECT language, earnings FROM users WHERE user_id = ?", (user_id,)) as cursor:
+        async with db.execute("SELECT language, earnings, ref_percent FROM users WHERE user_id = ?", (user_id,)) as cursor:
             row = await cursor.fetchone()
             lang = row[0] if row else 'ru'
             earnings = row[1] if (row and row[1]) else 0.0
+            ref_pct = row[2] if (row and row[2]) else 0.40
 
         async with db.execute("SELECT COUNT(*) FROM users WHERE referrer_id = ?", (user_id,)) as cursor:
             count = (await cursor.fetchone())[0]
@@ -550,6 +570,7 @@ async def ref_handler(message: types.Message):
             link=ref_link, 
             count=count, 
             paid_count=paid_count, 
+            percent=int(ref_pct * 100),
             earned=int(earnings)
         ), 
         parse_mode="Markdown",
@@ -625,6 +646,37 @@ async def complete_payout_handler(callback: types.CallbackQuery):
     )
     await callback.answer("Баланс обнулен!")
 
+# --- АДМИН КОМАНДА ДЛЯ УСТАНОВКИ ИНДИВИДУАЛЬНОГО ПРОЦЕНТА ---
+@dp.message(Command("setref"), F.from_user.id == ADMIN_ID)
+async def set_user_ref_percent(message: types.Message, command: CommandObject):
+    if not command.args:
+        await message.answer(
+            "⚠️ **Использование команды:**\n`/setref USER_ID PERCENT`\n\n"
+            "**Пример:** `/setref 8735103964 50` (установит 50% реферальных для пользователя)",
+            parse_mode="Markdown"
+        )
+        return
+
+    try:
+        args = command.args.split()
+        target_user_id = int(args[0])
+        new_percent = float(args[1])
+
+        if new_percent < 0 or new_percent > 100:
+            await message.answer("❌ Процент должен быть от 0 до 100!")
+            return
+
+        decimal_pct = new_percent / 100.0
+
+        async with aiosqlite.connect("bot_database.db") as db:
+            await db.execute("UPDATE users SET ref_percent = ? WHERE user_id = ?", (decimal_pct, target_user_id))
+            await db.commit()
+
+        await message.answer(f"✅ Пользователю `{target_user_id}` успешно установлен процент: **{int(new_percent)}%**", parse_mode="Markdown")
+
+    except Exception as e:
+        await message.answer(f"❌ Ошибка в формате. Используйте: `/setref USER_ID PERCENT`\nОшибка: {e}")
+
 # --- АДМИН ПАНЕЛЬ (/admin) & РАССЫЛКА ---
 @dp.message(Command("admin"), F.from_user.id == ADMIN_ID)
 async def admin_panel_cmd(message: types.Message):
@@ -637,7 +689,8 @@ async def admin_panel_cmd(message: types.Message):
     stats_text = (
         f"🛠 **ПАНЕЛЬ АДМИНИСТРАТОРА**\n\n"
         f"👥 Всего пользователей: **{total_users}**\n"
-        f"🛒 Всего проданных подписок: **{total_sales}**\n"
+        f"🛒 Всего проданных подписок: **{total_sales}**\n\n"
+        f"⚙️ **Установить личный процент:**\n`/setref USER_ID PERCENT`"
     )
 
     admin_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -702,10 +755,11 @@ async def forward_to_admin(message: types.Message, state: FSMContext):
     referrer_info = "Прямой заход"
     if referrer_id:
         async with aiosqlite.connect("bot_database.db") as db:
-            async with db.execute("SELECT username FROM users WHERE user_id = ?", (referrer_id,)) as cursor:
+            async with db.execute("SELECT username, ref_percent FROM users WHERE user_id = ?", (referrer_id,)) as cursor:
                 ref_user = await cursor.fetchone()
                 ref_name = f"@{ref_user[0]}" if ref_user and ref_user[0] != "NoUsername" else f"ID: {referrer_id}"
-                referrer_info = f"Партнер: {ref_name} (ID: `{referrer_id}`) — **40%**"
+                ref_pct = int((ref_user[1] if ref_user and ref_user[1] else 0.40) * 100)
+                referrer_info = f"Партнер: {ref_name} (ID: `{referrer_id}`) — **{ref_pct}%**"
 
     admin_caption = (
         f"📩 **Новое сообщение / Чек от клиента!**\n\n"
@@ -715,7 +769,7 @@ async def forward_to_admin(message: types.Message, state: FSMContext):
     )
 
     reply_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Подтвердить оплату (Начислить 40%)", callback_data=f"confirm_{user_id}_{last_tariff}")],
+        [InlineKeyboardButton(text="✅ Подтвердить оплату", callback_data=f"confirm_{user_id}_{last_tariff}")],
         [InlineKeyboardButton(text="💬 Ответить клиенту", callback_data=f"reply_{user_id}")]
     ])
 
