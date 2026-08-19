@@ -165,8 +165,8 @@ def get_main_keyboard(lang):
 
 def get_tariffs_keyboard(lang):
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=TEXTS[lang]['tariff_100_btn'], callback_data="buy_100")],
-        [InlineKeyboardButton(text=TEXTS[lang]['tariff_200_btn'], callback_data="buy_200")]
+        [InlineKeyboardButton(text=TEXTS[lang]['tariff_100_btn'], callback_data=f"buy_100_{lang}")],
+        [InlineKeyboardButton(text=TEXTS[lang]['tariff_200_btn'], callback_data=f"buy_200_{lang}")]
     ])
 
 @dp.message(CommandStart())
@@ -221,24 +221,26 @@ async def buy_vpn_handler(message: types.Message):
     async with aiosqlite.connect("bot_database.db") as db:
         async with db.execute("SELECT language FROM users WHERE user_id = ?", (user_id,)) as cursor:
             row = await cursor.fetchone()
-            lang = row[0] if row else 'ru'
+            lang = row[0] if (row and row[0]) else 'ru'
 
     await message.answer(TEXTS[lang]['tariffs_title'], reply_markup=get_tariffs_keyboard(lang), parse_mode="Markdown")
 
 @dp.callback_query(F.data.startswith("buy_"))
 async def process_tariff_selection(callback: types.CallbackQuery):
-    tariff_code = int(callback.data.split("_")[1])
+    parts = callback.data.split("_")
+    tariff_code = int(parts[1])
+    lang = parts[2] if len(parts) > 2 else 'ru'
+    
     user_id = callback.from_user.id
     username = f"@{callback.from_user.username}" if callback.from_user.username else "Отсутствует"
 
     async with aiosqlite.connect("bot_database.db") as db:
-        await db.execute("UPDATE users SET last_selected_tariff = ? WHERE user_id = ?", (tariff_code, user_id))
+        await db.execute("UPDATE users SET last_selected_tariff = ?, language = ? WHERE user_id = ?", (tariff_code, lang, user_id))
         await db.commit()
 
-        async with db.execute("SELECT referrer_id, language FROM users WHERE user_id = ?", (user_id,)) as cursor:
+        async with db.execute("SELECT referrer_id FROM users WHERE user_id = ?", (user_id,)) as cursor:
             user_data = await cursor.fetchone()
             referrer_id = user_data[0] if user_data else None
-            lang = user_data[1] if user_data else 'ru'
 
     tariff_name = TEXTS[lang]['tariff_100_btn'] if tariff_code == 100 else TEXTS[lang]['tariff_200_btn']
 
@@ -255,7 +257,7 @@ async def process_tariff_selection(callback: types.CallbackQuery):
         f"💳 **Тариф:** {tariff_name}\n"
         f"👤 **Клиент:** {username} (ID: `{user_id}`)\n"
         f"🤝 **Источник:** {referrer_info}\n"
-        f"🌐 **Язык:** {lang.upper()}"
+        f"🌐 **Язык клиента:** {lang.upper()}"
     )
 
     reply_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -266,7 +268,7 @@ async def process_tariff_selection(callback: types.CallbackQuery):
     await bot.send_message(chat_id=ADMIN_ID, text=admin_alert, parse_mode="Markdown", reply_markup=reply_kb)
 
     pay_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=TEXTS[lang]['btn_i_paid'], callback_data=f"userpaid_{tariff_code}")]
+        [InlineKeyboardButton(text=TEXTS[lang]['btn_i_paid'], callback_data=f"userpaid_{tariff_code}_{lang}")]
     ])
 
     await callback.message.edit_text(
@@ -278,19 +280,18 @@ async def process_tariff_selection(callback: types.CallbackQuery):
 
 @dp.callback_query(F.data.startswith("userpaid_"))
 async def user_paid_handler(callback: types.CallbackQuery):
-    tariff_code = int(callback.data.split("_")[1])
+    parts = callback.data.split("_")
+    tariff_code = int(parts[1])
+    lang = parts[2] if len(parts) > 2 else 'ru'
+    
     user_id = callback.from_user.id
     username = f"@{callback.from_user.username}" if callback.from_user.username else "Отсутствует"
-
-    async with aiosqlite.connect("bot_database.db") as db:
-        async with db.execute("SELECT language FROM users WHERE user_id = ?", (user_id,)) as cursor:
-            row = await cursor.fetchone()
-            lang = row[0] if row else 'ru'
 
     admin_msg = (
         f"⚠️ **КЛИЕНТ НАЖАЛ \"Я ОПЛАТИЛ\"!**\n\n"
         f"👤 **Клиент:** {username} (ID: `{user_id}`)\n"
         f"💳 **Тариф:** {tariff_code} TMT\n"
+        f"🌐 **Язык:** {lang.upper()}\n"
         f"📌 Проверьте зачисление средств и вышлите ключи!"
     )
 
