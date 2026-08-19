@@ -51,16 +51,29 @@ TEXTS = {
         'btn_ref': "🔗 Реферальная ссылка",
         'btn_lang': "🌐 Язык / Language / Dil",
         'tariffs_title': "⚡ **Выберите подходящий тариф VPN:**",
-        'tariff_100_btn': "📱 100 манат (1 устройство)",
-        'tariff_200_btn': "♾️ 200 манат (Бесконечно устройств)",
-        'payment_text': (
-            "💳 **Реквизиты для оплаты:**\n\n"
+        'tariff_100_btn': "📱 100 манат ($5) — 1 устройство",
+        'tariff_200_btn': "♾️ 200 манат ($10) — Безлимит устройств",
+        'choose_pay_method': "💳 **Выберите способ оплаты для тарифа {tariff}:**",
+        'btn_pay_phone': "📱 Оплатить по номеру",
+        'btn_pay_crypto': "💎 Оплатить криптовалютой",
+        'payment_phone_text': (
+            "💳 **Оплата по номеру телефона:**\n\n"
             "Вы выбрали тариф: **{tariff}**\n\n"
             "📌 **Номера для оплаты:**\n"
             "`+99362565792`\n"
             "`+99361843366`\n\n"
             "💡 *Если перевод с номера на номер не проходит — оплатите через терминал.*\n\n"
             "После оплаты нажмите кнопку **«✅ Я оплатил»** ниже и отправьте чек или скриншот прямо в этот чат."
+        ),
+        'payment_crypto_text': (
+            "💎 **Оплата криптовалютой:**\n\n"
+            "Вы выбрали тариф: **{tariff}**\n\n"
+            "📌 **Наши крипто-кошельки:**\n\n"
+            "🔹 **USDT (TRC20):**\n`TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv`\n\n"
+            "🔹 **BTC (Bitcoin):**\n`3GRApv73rPGn7JMtueGAaY33SbviiQdnbR`\n\n"
+            "🔹 **USDT (BEP20):**\n`0xbb7d1b44a4da704ecd3ce89e92b09ea5fbf5e4b1`\n\n"
+            "🔹 **ETH (BEP20):**\n`0xbb7d1b44a4da704ecd3ce89e92b09ea5fbf5e4b1`\n\n"
+            "После перевода нажмите кнопку **«✅ Я оплатил»** и отправьте скриншот или хеш транзакции оператору."
         ),
         'share_text': "Привет! Пользуюсь отличным скоростным VPN. Держи ссылку:",
         'btn_share': "📲 Поделиться с друзьями",
@@ -84,16 +97,29 @@ TEXTS = {
         'btn_ref': "🔗 Referral Link",
         'btn_lang': "🌐 Language / Язык / Dil",
         'tariffs_title': "⚡ **Select your VPN plan:**",
-        'tariff_100_btn': "📱 100 TMT (1 device)",
-        'tariff_200_btn': "♾️ 200 TMT (Unlimited devices)",
-        'payment_text': (
-            "💳 **Payment details:**\n\n"
+        'tariff_100_btn': "📱 100 TMT ($5) — 1 device",
+        'tariff_200_btn': "♾️ 200 TMT ($10) — Unlimited devices",
+        'choose_pay_method': "💳 **Select payment method for plan {tariff}:**",
+        'btn_pay_phone': "📱 Pay by phone number",
+        'btn_pay_crypto': "💎 Pay with Crypto",
+        'payment_phone_text': (
+            "💳 **Payment by phone number:**\n\n"
             "Selected plan: **{tariff}**\n\n"
             "📌 **Payment phone numbers:**\n"
             "`+99362565792`\n"
             "`+99361843366`\n\n"
             "💡 *If transfer from number to number fails, pay via terminal.*\n\n"
             "After payment, click the **«✅ I have paid»** button below and send the receipt or screenshot in this chat."
+        ),
+        'payment_crypto_text': (
+            "💎 **Crypto payment:**\n\n"
+            "Selected plan: **{tariff}**\n\n"
+            "📌 **Our crypto wallets:**\n\n"
+            "🔹 **USDT (TRC20):**\n`TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv`\n\n"
+            "🔹 **BTC (Bitcoin):**\n`3GRApv73rPGn7JMtueGAaY33SbviiQdnbR`\n\n"
+            "🔹 **USDT (BEP20):**\n`0xbb7d1b44a4da704ecd3ce89e92b09ea5fbf5e4b1`\n\n"
+            "🔹 **ETH (BEP20):**\n`0xbb7d1b44a4da704ecd3ce89e92b09ea5fbf5e4b1`\n\n"
+            "After transfer, click **«✅ I have paid»** and send the screenshot or tx hash in this chat."
         ),
         'share_text': "Hey! I'm using a fast VPN service. Here is the link:",
         'btn_share': "📲 Share with friends",
@@ -117,16 +143,29 @@ TEXTS = {
         'btn_ref': "🔗 Referal salgy",
         'btn_lang': "🌐 Dil / Language / Язык",
         'tariffs_title': "⚡ **Töleg tarifini saýlaň:**",
-        'tariff_100_btn': "📱 100 manat (1 enjam)",
-        'tariff_200_btn': "♾️ 200 manat (Päksiz enjam)",
-        'payment_text': (
-            "💳 **Töleg maglumatlary:**\n\n"
+        'tariff_100_btn': "📱 100 manat ($5) — 1 enjam",
+        'tariff_200_btn': "♾️ 200 manat ($10) — Päksiz enjam",
+        'choose_pay_method': "💳 **{tariff} tarifi üçin töleg usulyny saýlaň:**",
+        'btn_pay_phone': "📱 Telefon belgi arkaly tölemek",
+        'btn_pay_crypto': "💎 Kriptowalýuta arkaly tölemek",
+        'payment_phone_text': (
+            "💳 **Telefon belgi arkaly töleg:**\n\n"
             "Saýlanan tarif: **{tariff}**\n\n"
             "📌 **Töleg üçin telefon belgiler:**\n"
             "`+99362565792`\n"
             "`+99361843366`\n\n"
             "💡 *Nomerden nomere töleg geçmese — terminal arkaly töleň.*\n\n"
             "Töleg edeniňizden soň **«✅ Men töledim»** düwmesine басыň we çeki (скриншот) şu çata ugradyň."
+        ),
+        'payment_crypto_text': (
+            "💎 **Kriptowalýuta arkaly töleg:**\n\n"
+            "Saýlanan tarif: **{tariff}**\n\n"
+            "📌 **Biziň kripto gapjyklarymyz:**\n\n"
+            "🔹 **USDT (TRC20):**\n`TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv`\n\n"
+            "🔹 **BTC (Bitcoin):**\n`3GRApv73rPGn7JMtueGAaY33SbviiQdnbR`\n\n"
+            "🔹 **USDT (BEP20):**\n`0xbb7d1b44a4da704ecd3ce89e92b09ea5fbf5e4b1`\n\n"
+            "🔹 **ETH (BEP20):**\n`0xbb7d1b44a4da704ecd3ce89e92b09ea5fbf5e4b1`\n\n"
+            "Geçirim edeniňizden soň **«✅ Men töledim»** düwmesine басыň we çeki (скриншот) ugradyň."
         ),
         'share_text': "Salam! Men çalt VPN ulanýaryn. Şyltylary şu ýerden alyp bilersiňiz:",
         'btn_share': "📲 Dostlaryň bilen paýlaş",
@@ -275,30 +314,57 @@ async def process_tariff_selection(callback: types.CallbackQuery):
 
     await bot.send_message(chat_id=ADMIN_ID, text=admin_alert, parse_mode="Markdown", reply_markup=reply_kb)
 
-    pay_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=TEXTS[lang]['btn_i_paid'], callback_data=f"userpaid_{tariff_code}_{lang}")]
+    pay_method_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=TEXTS[lang]['btn_pay_phone'], callback_data=f"paymeth_phone_{tariff_code}_{lang}")],
+        [InlineKeyboardButton(text=TEXTS[lang]['btn_pay_crypto'], callback_data=f"paymeth_crypto_{tariff_code}_{lang}")]
     ])
 
     await callback.message.edit_text(
-        TEXTS[lang]['payment_text'].format(tariff=tariff_name),
+        TEXTS[lang]['choose_pay_method'].format(tariff=tariff_name),
         parse_mode="Markdown",
-        reply_markup=pay_kb
+        reply_markup=pay_method_kb
     )
+    await callback.answer()
+
+@dp.callback_query(F.data.startswith("paymeth_"))
+async def show_payment_details(callback: types.CallbackQuery):
+    parts = callback.data.split("_")
+    method = parts[1]
+    tariff_code = int(parts[2])
+    lang = parts[3] if len(parts) > 3 else 'ru'
+
+    tariff_name = TEXTS[lang]['tariff_100_btn'] if tariff_code == 100 else TEXTS[lang]['tariff_200_btn']
+
+    pay_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=TEXTS[lang]['btn_i_paid'], callback_data=f"userpaid_{tariff_code}_{method}_{lang}")]
+    ])
+
+    if method == "phone":
+        text = TEXTS[lang]['payment_phone_text'].format(tariff=tariff_name)
+    else:
+        text = TEXTS[lang]['payment_crypto_text'].format(tariff=tariff_name)
+
+    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=pay_kb)
     await callback.answer()
 
 @dp.callback_query(F.data.startswith("userpaid_"))
 async def user_paid_handler(callback: types.CallbackQuery):
     parts = callback.data.split("_")
     tariff_code = int(parts[1])
-    lang = parts[2] if len(parts) > 2 else 'ru'
+    method = parts[2]
+    lang = parts[3] if len(parts) > 3 else 'ru'
     
     user_id = callback.from_user.id
     username = f"@{callback.from_user.username}" if callback.from_user.username else "Отсутствует"
 
+    usd_amount = "$5" if tariff_code == 100 else "$10"
+    method_str = "По номеру телефона" if method == "phone" else "Криптовалюта"
+
     admin_msg = (
         f"⚠️ **КЛИЕНТ НАЖАЛ \"Я ОПЛАТИЛ\"!**\n\n"
         f"👤 **Клиент:** {username} (ID: `{user_id}`)\n"
-        f"💳 **Тариф:** {tariff_code} TMT\n"
+        f"💳 **Тариф:** {tariff_code} TMT ({usd_amount})\n"
+        f"⚙️ **Метод оплаты:** {method_str}\n"
         f"🌐 **Язык:** {lang.upper()}\n"
         f"📌 Проверьте зачисление средств и вышлите ключи!"
     )
