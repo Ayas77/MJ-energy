@@ -1,19 +1,3 @@
-import subprocess
-import sys
-
-# Автоматическая проверка и установка библиотек при старте
-def install_requirements():
-    required = ["aiogram==3.15.0", "aiosqlite==0.20.0", "aiohttp==3.10.11"]
-    for package in required:
-        try:
-            mod_name = package.split("==")[0]
-            __import__(mod_name)
-        except ImportError:
-            print(f"📦 Устанавливаем {package}...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-install_requirements()
-
 import os
 import logging
 import asyncio
@@ -27,6 +11,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 
 logging.basicConfig(level=logging.INFO)
 
+# Жестко прописанные данные
 BOT_TOKEN = "8923920954:AAGpJQyWtwCjeO8mR2s4RW9TeSnPm-UQ12Q"
 ADMIN_ID = 8735103964
 
@@ -36,7 +21,7 @@ dp = Dispatcher(storage=MemoryStorage())
 class AdminState(StatesGroup):
     waiting_for_reply = State()
 
-# Тексты и локализация на трех языках
+# Полный словарь текстов на трех языках (RU / EN / TK)
 TEXTS = {
     'ru': {
         'welcome': "👋 Здравствуйте! Выберите язык / Select language / Dil saýlaň:",
@@ -206,7 +191,6 @@ async def process_tariff_selection(callback: types.CallbackQuery):
                 ref_name = f"@{ref_user[0]}" if ref_user and ref_user[0] != "NoUsername" else f"ID: {referrer_id}"
                 referrer_info = f"Партнер: {ref_name} (ID: `{referrer_id}`) — **40%**"
 
-    # Уведомление администратору о намерении купить
     admin_alert = (
         f"🛍 **ЗАЯВКА НА ПОКУПКУ VPN!**\n\n"
         f"💳 **Тариф:** {tariff_name}\n"
@@ -221,7 +205,6 @@ async def process_tariff_selection(callback: types.CallbackQuery):
 
     await bot.send_message(chat_id=ADMIN_ID, text=admin_alert, parse_mode="Markdown", reply_markup=reply_kb)
 
-    # Выдача реквизитов пользователю
     await callback.message.edit_text(
         TEXTS[lang]['payment_text'].format(tariff=tariff_name),
         parse_mode="Markdown"
@@ -247,7 +230,6 @@ async def ref_handler(message: types.Message):
 async def change_lang_handler(message: types.Message):
     await message.answer("Выберите язык / Select language / Dil saýlaň:", reply_markup=get_lang_keyboard())
 
-# Пересылка всех сообщений (чеков, фото, вопросов) админу
 @dp.message(F.chat.type == "private")
 async def forward_to_admin(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
