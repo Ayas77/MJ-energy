@@ -1,3 +1,19 @@
+import subprocess
+import sys
+
+# Автоматическая установка зависимостей, если Railway запустил голый Python
+for pkg in ["aiogram==3.15.0", "aiosqlite==0.20.0", "aiohttp==3.10.11"]:
+    try:
+        __import__(pkg.split("==")[0])
+    except ImportError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+
+import os
+import logging
+import asyncio
+import aiosqlite
+# ... весь остальной код остается как был ...
+
 import os
 import logging
 import asyncio
