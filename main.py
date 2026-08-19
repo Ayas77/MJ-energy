@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-# Гарантированная установка всех библиотек ДО их импорта
+# Авто-установка всех необходимых библиотек при запуске
 for pkg in ["aiogram==3.15.0", "aiosqlite==0.20.0", "aiohttp==3.10.11"]:
     try:
         mod_name = pkg.split("==")[0]
@@ -13,6 +13,7 @@ for pkg in ["aiogram==3.15.0", "aiosqlite==0.20.0", "aiohttp==3.10.11"]:
 import os
 import logging
 import asyncio
+import urllib.parse
 import aiosqlite
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import CommandStart, CommandObject
@@ -28,6 +29,9 @@ ADMIN_ID = 8735103964
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+
+class UserState(StatesGroup):
+    waiting_for_payout_req = State()
 
 class AdminState(StatesGroup):
     waiting_for_reply = State()
@@ -53,9 +57,15 @@ TEXTS = {
             "💳 **Реквизиты для оплаты:**\n\n"
             "Вы выбрали тариф: **{tariff}**\n\n"
             "📌 **Номер для перевода / пополнения:**\n`+9936XXXXXXX`\n\n"
-            "После оплаты отправьте чек или скриншот прямо в этот чат. "
-            "Оператор проверит перевод и выдаст вам ключи доступа!"
-        )
+            "После оплаты нажмите кнопку **«✅ Я оплатил»** ниже и отправьте чек или скриншот прямо в этот чат."
+        ),
+        'share_text': "Привет! Пользуюсь отличным скоростным VPN. Держи ссылку:",
+        'btn_share': "📲 Поделиться с друзьями",
+        'btn_withdraw': "💸 Запросить вывод средств",
+        'btn_i_paid': "✅ Я оплатил",
+        'paid_notify_user': "⏳ Ваши данные отправлены оператору. Ожидайте подтверждения и ключи!",
+        'enter_payout_info': "✍️ Введите номер карты или телефона для получения выплаты:",
+        'payout_sent': "✅ Заявка на вывод отправлена оператору!"
     },
     'en': {
         'welcome': "👋 Hello! Select language / Выберите язык / Dil saýlaň:",
@@ -77,9 +87,15 @@ TEXTS = {
             "💳 **Payment details:**\n\n"
             "Selected plan: **{tariff}**\n\n"
             "📌 **Phone number / Payment info:**\n`+9936XXXXXXX`\n\n"
-            "After payment, please send the receipt or screenshot directly to this chat. "
-            "The operator will verify the transaction and issue your access keys!"
-        )
+            "After payment, click the **«✅ I have paid»** button below and send the receipt or screenshot in this chat."
+        ),
+        'share_text': "Hey! I'm using a fast VPN service. Here is the link:",
+        'btn_share': "📲 Share with friends",
+        'btn_withdraw': "💸 Request payout",
+        'btn_i_paid': "✅ I have paid",
+        'paid_notify_user': "⏳ Information sent to the operator. Please wait for verification and keys!",
+        'enter_payout_info': "✍️ Enter your card or phone number for payout:",
+        'payout_sent': "✅ Payout request has been sent to the operator!"
     },
     'tk': {
         'welcome': "👋 Salam! Dil saýlaň / Выберите язык / Select language:",
@@ -101,9 +117,16 @@ TEXTS = {
             "💳 **Töleg maglumatlary:**\n\n"
             "Saýlanan tarif: **{tariff}**\n\n"
             "📌 **Töleg üçin telefon belgi:**\n`+9936XXXXXXX`\n\n"
-            "Tölegi geçireniňizden soň çeki (скриншот) şu çata ugradyň. "
+            "Töleg edeniňizden soň **«✅ Men töledim»** düwmesine басыň we çeki (скриншот) şu çata ugradyň. "
             "Оператор tölegi barlap, сизге VPN açarlaryny ugradar!"
-        )
+        ),
+        'share_text': "Salam! Men çalt VPN ulanýaryn. Şyltylary şu ýerden alyp bilersiňiz:",
+        'btn_share': "📲 Dostlaryň bilen paýlaş",
+        'btn_withdraw': "💸 Pul çykarmak haýyşy",
+        'btn_i_paid': "✅ Men töledim",
+        'paid_notify_user': "⏳ Maglumatlar оператора ugradyldy. Barlag we açarlar üçin garaşyň!",
+        'enter_payout_info': "✍️ Pul geçirmek üçin karta ýa-da telefon belgiňizi ýazyň:",
+        'payout_sent': "✅ Haýyşyňyz оператора ugradyldy!"
     }
 }
 
@@ -228,7 +251,7 @@ async def process_tariff_selection(callback: types.CallbackQuery):
                 referrer_info = f"Партнер: {ref_name} (ID: `{referrer_id}`) — **40%**"
 
     admin_alert = (
-        f"🛍 **ЗАЯВКА НА ПОКУПКУ VPN!**\n\n"
+        f"🛍 **ВЫБОР ТАРИФА!**\n\n"
         f"💳 **Тариф:** {tariff_name}\n"
         f"👤 **Клиент:** {username} (ID: `{user_id}`)\n"
         f"🤝 **Источник:** {referrer_info}\n"
@@ -242,11 +265,42 @@ async def process_tariff_selection(callback: types.CallbackQuery):
 
     await bot.send_message(chat_id=ADMIN_ID, text=admin_alert, parse_mode="Markdown", reply_markup=reply_kb)
 
+    pay_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=TEXTS[lang]['btn_i_paid'], callback_data=f"userpaid_{tariff_code}")]
+    ])
+
     await callback.message.edit_text(
         TEXTS[lang]['payment_text'].format(tariff=tariff_name),
-        parse_mode="Markdown"
+        parse_mode="Markdown",
+        reply_markup=pay_kb
     )
     await callback.answer()
+
+@dp.callback_query(F.data.startswith("userpaid_"))
+async def user_paid_handler(callback: types.CallbackQuery):
+    tariff_code = int(callback.data.split("_")[1])
+    user_id = callback.from_user.id
+    username = f"@{callback.from_user.username}" if callback.from_user.username else "Отсутствует"
+
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT language FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            lang = row[0] if row else 'ru'
+
+    admin_msg = (
+        f"⚠️ **КЛИЕНТ НАЖАЛ \"Я ОПЛАТИЛ\"!**\n\n"
+        f"👤 **Клиент:** {username} (ID: `{user_id}`)\n"
+        f"💳 **Тариф:** {tariff_code} TMT\n"
+        f"📌 Проверьте зачисление средств и вышлите ключи!"
+    )
+
+    reply_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Подтвердить оплату (Начислить 40%)", callback_data=f"confirm_{user_id}_{tariff_code}")],
+        [InlineKeyboardButton(text="💬 Ответить / Выдать доступ", callback_data=f"reply_{user_id}")]
+    ])
+
+    await bot.send_message(chat_id=ADMIN_ID, text=admin_msg, parse_mode="Markdown", reply_markup=reply_kb)
+    await callback.answer(TEXTS[lang]['paid_notify_user'], show_alert=True)
 
 @dp.callback_query(F.data.startswith("confirm_"), F.from_user.id == ADMIN_ID)
 async def confirm_payment_handler(callback: types.CallbackQuery):
@@ -254,24 +308,20 @@ async def confirm_payment_handler(callback: types.CallbackQuery):
     user_id = int(parts[1])
     tariff_amount = int(parts[2])
 
-    reward = tariff_amount * 0.40  # 40% от стоимости тарифа
+    reward = tariff_amount * 0.40
 
     async with aiosqlite.connect("bot_database.db") as db:
-        # Увеличиваем счетчик покупок у пользователя
         await db.execute("UPDATE users SET purchases_count = purchases_count + 1 WHERE user_id = ?", (user_id,))
         await db.commit()
 
-        # Ищем партнера
         async with db.execute("SELECT referrer_id FROM users WHERE user_id = ?", (user_id,)) as cursor:
             row = await cursor.fetchone()
             referrer_id = row[0] if row else None
 
         if referrer_id:
-            # Начисляем 40% партнеру
             await db.execute("UPDATE users SET earnings = earnings + ? WHERE user_id = ?", (reward, referrer_id))
             await db.commit()
 
-            # Уведомляем партнера
             try:
                 await bot.send_message(
                     chat_id=referrer_id,
@@ -309,7 +359,15 @@ async def ref_handler(message: types.Message):
 
     bot_info = await bot.get_me()
     ref_link = f"https://t.me/{bot_info.username}?start=ref_{user_id}"
-    
+
+    share_msg = f"{TEXTS[lang]['share_text']}\n{ref_link}"
+    share_url = f"https://t.me/share/url?url={urllib.parse.quote(share_msg)}"
+
+    ref_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=TEXTS[lang]['btn_share'], url=share_url)],
+        [InlineKeyboardButton(text=TEXTS[lang]['btn_withdraw'], callback_data="req_payout")]
+    ])
+
     await message.answer(
         TEXTS[lang]['ref_info'].format(
             link=ref_link, 
@@ -317,8 +375,78 @@ async def ref_handler(message: types.Message):
             paid_count=paid_count, 
             earned=int(earnings)
         ), 
+        parse_mode="Markdown",
+        reply_markup=ref_kb
+    )
+
+@dp.callback_query(F.data == "req_payout")
+async def start_payout_request(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT language, earnings FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            lang = row[0] if row else 'ru'
+            earnings = row[1] if (row and row[1]) else 0.0
+
+    if earnings <= 0:
+        await callback.answer("❌ У вас пока нет доступных средств для вывода!", show_alert=True)
+        return
+
+    await state.set_state(UserState.waiting_for_payout_req)
+    await callback.message.answer(TEXTS[lang]['enter_payout_info'])
+    await callback.answer()
+
+@dp.message(UserState.waiting_for_payout_req)
+async def process_payout_info(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    username = f"@{message.from_user.username}" if message.from_user.username else "Отсутствует"
+    payout_details = message.text
+
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT language, earnings FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            lang = row[0] if row else 'ru'
+            earnings = row[1] if (row and row[1]) else 0.0
+
+    admin_msg = (
+        f"💸 **ЗАЯВКА НА ВЫВОД СРЕДСТВ!**\n\n"
+        f"👤 **Партнер:** {username} (ID: `{user_id}`)\n"
+        f"💰 **Сумма:** {int(earnings)} TMT\n"
+        f"📌 **Реквизиты:** `{payout_details}`"
+    )
+
+    reply_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Выплачено (Обнулить баланс)", callback_data=f"payoutdone_{user_id}_{int(earnings)}")]
+    ])
+
+    await bot.send_message(chat_id=ADMIN_ID, text=admin_msg, parse_mode="Markdown", reply_markup=reply_kb)
+    await message.answer(TEXTS[lang]['payout_sent'])
+    await state.clear()
+
+@dp.callback_query(F.data.startswith("payoutdone_"), F.from_user.id == ADMIN_ID)
+async def complete_payout_handler(callback: types.CallbackQuery):
+    parts = callback.data.split("_")
+    user_id = int(parts[1])
+    amount = int(parts[2])
+
+    async with aiosqlite.connect("bot_database.db") as db:
+        await db.execute("UPDATE users SET earnings = 0 WHERE user_id = ?", (user_id,))
+        await db.commit()
+
+    try:
+        await bot.send_message(
+            chat_id=user_id,
+            text=f"✅ **Ваша выплата {amount} TMT успешно произведена!**\nСпасибо за сотрудничество!",
+            parse_mode="Markdown"
+        )
+    except Exception:
+        pass
+
+    await callback.message.edit_text(
+        callback.message.text + f"\n\n✅ **Выплата подтверждена, баланс пользователя обнулен!**",
         parse_mode="Markdown"
     )
+    await callback.answer("Баланс обнулен!")
 
 @dp.message(F.text.in_([
     "🌐 Язык / Language / Dil",
@@ -331,7 +459,7 @@ async def change_lang_handler(message: types.Message):
 @dp.message(F.chat.type == "private")
 async def forward_to_admin(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
-    if current_state == AdminState.waiting_for_reply.state:
+    if current_state in [AdminState.waiting_for_reply.state, UserState.waiting_for_payout_req.state]:
         return
 
     user_id = message.from_user.id
