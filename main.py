@@ -37,7 +37,12 @@ TEXTS = {
         'welcome': "👋 Здравствуйте! Выберите язык / Select language / Dil saýlaň:",
         'lang_set': "✅ Язык установлен: Русский.\nВыберите действие в меню ниже или напишите сообщение оператору.",
         'msg_sent': "📩 Ваше сообщение отправлено оператору. Ожидайте ответа!",
-        'ref_info': "🔗 **Ваша реферальная ссылка:**\n{link}\n\n👥 Приглашено: {count} чел.",
+        'ref_info': (
+            "🔗 **Ваша реферальная ссылка:**\n`{link}`\n\n"
+            "👥 **Приглашено:** {count} чел.\n"
+            "🛒 **Оплачено заказов:** {paid_count}\n"
+            "💰 **Заработано (40%):** {earned} TMT"
+        ),
         'btn_buy': "🛒 Купить VPN",
         'btn_ref': "🔗 Реферальная ссылка",
         'btn_lang': "🌐 Язык / Language / Dil",
@@ -56,7 +61,12 @@ TEXTS = {
         'welcome': "👋 Hello! Select language / Выберите язык / Dil saýlaň:",
         'lang_set': "✅ Language set: English.\nSelect an option from the menu below or send a message to the operator.",
         'msg_sent': "📩 Your message has been sent to the operator. Please wait for a reply!",
-        'ref_info': "🔗 **Your referral link:**\n{link}\n\n👥 Invited: {count} users",
+        'ref_info': (
+            "🔗 **Your referral link:**\n`{link}`\n\n"
+            "👥 **Invited:** {count} users\n"
+            "🛒 **Paid orders:** {paid_count}\n"
+            "💰 **Earned (40%):** {earned} TMT"
+        ),
         'btn_buy': "🛒 Buy VPN",
         'btn_ref': "🔗 Referral Link",
         'btn_lang': "🌐 Language / Язык / Dil",
@@ -75,7 +85,12 @@ TEXTS = {
         'welcome': "👋 Salam! Dil saýlaň / Выберите язык / Select language:",
         'lang_set': "✅ Dil saýlandy: Türkmen dili.\nAşakdaky menýudan bölümi saýlaň ýa-da оператора hat ýazyň.",
         'msg_sent': "📩 Hatyňyz оператора ugradyldy. Jogaba garaşyň!",
-        'ref_info': "🔗 **Siziň referal salgyňyz:**\n{link}\n\n👥 Çagyrylanlar: {count} adam",
+        'ref_info': (
+            "🔗 **Siziň referal salgyňyz:**\n`{link}`\n\n"
+            "👥 **Çagyrylanlar:** {count} adam\n"
+            "🛒 **Tölenenen заказлар:** {paid_count}\n"
+            "💰 **Заработок (40%):** {earned} TMT"
+        ),
         'btn_buy': "🛒 VPN satyn almak",
         'btn_ref': "🔗 Referal salgy",
         'btn_lang': "🌐 Dil / Language / Язык",
@@ -99,7 +114,10 @@ async def init_db():
                 user_id INTEGER PRIMARY KEY,
                 username TEXT,
                 referrer_id INTEGER,
-                language TEXT DEFAULT 'ru'
+                language TEXT DEFAULT 'ru',
+                earnings REAL DEFAULT 0.0,
+                purchases_count INTEGER DEFAULT 0,
+                last_selected_tariff INTEGER DEFAULT 100
             )
         """)
         await db.commit()
@@ -166,8 +184,13 @@ async def set_language(callback: types.CallbackQuery):
         await db.execute("UPDATE users SET language = ? WHERE user_id = ?", (lang, user_id))
         await db.commit()
 
-    await callback.message.delete()
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
+
     await callback.message.answer(TEXTS[lang]['lang_set'], reply_markup=get_main_keyboard(lang))
+    await callback.answer()
 
 @dp.message(F.text.in_(["🛒 Купить VPN", "🛒 Buy VPN", "🛒 VPN satyn almak"]))
 async def buy_vpn_handler(message: types.Message):
@@ -181,17 +204,20 @@ async def buy_vpn_handler(message: types.Message):
 
 @dp.callback_query(F.data.startswith("buy_"))
 async def process_tariff_selection(callback: types.CallbackQuery):
-    tariff_code = callback.data.split("_")[1]
+    tariff_code = int(callback.data.split("_")[1])
     user_id = callback.from_user.id
     username = f"@{callback.from_user.username}" if callback.from_user.username else "Отсутствует"
 
     async with aiosqlite.connect("bot_database.db") as db:
+        await db.execute("UPDATE users SET last_selected_tariff = ? WHERE user_id = ?", (tariff_code, user_id))
+        await db.commit()
+
         async with db.execute("SELECT referrer_id, language FROM users WHERE user_id = ?", (user_id,)) as cursor:
             user_data = await cursor.fetchone()
             referrer_id = user_data[0] if user_data else None
             lang = user_data[1] if user_data else 'ru'
 
-    tariff_name = TEXTS[lang]['tariff_100_btn'] if tariff_code == "100" else TEXTS[lang]['tariff_200_btn']
+    tariff_name = TEXTS[lang]['tariff_100_btn'] if tariff_code == 100 else TEXTS[lang]['tariff_200_btn']
 
     referrer_info = "Прямой заход (без реферала)"
     if referrer_id:
@@ -210,6 +236,7 @@ async def process_tariff_selection(callback: types.CallbackQuery):
     )
 
     reply_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Подтвердить оплату (Начислить 40%)", callback_data=f"confirm_{user_id}_{tariff_code}")],
         [InlineKeyboardButton(text="💬 Ответить / Выдать доступ", callback_data=f"reply_{user_id}")]
     ])
 
@@ -221,22 +248,83 @@ async def process_tariff_selection(callback: types.CallbackQuery):
     )
     await callback.answer()
 
-@dp.message(F.text.in_(["🔗 Реферальная ссылка", "🔗 Referral Link", "🔗 Referal salgy"]))
+@dp.callback_query(F.data.startswith("confirm_"), F.from_user.id == ADMIN_ID)
+async def confirm_payment_handler(callback: types.CallbackQuery):
+    parts = callback.data.split("_")
+    user_id = int(parts[1])
+    tariff_amount = int(parts[2])
+
+    reward = tariff_amount * 0.40  # 40% от стоимости тарифа
+
+    async with aiosqlite.connect("bot_database.db") as db:
+        # Увеличиваем счетчик покупок у пользователя
+        await db.execute("UPDATE users SET purchases_count = purchases_count + 1 WHERE user_id = ?", (user_id,))
+        await db.commit()
+
+        # Ищем партнера
+        async with db.execute("SELECT referrer_id FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            referrer_id = row[0] if row else None
+
+        if referrer_id:
+            # Начисляем 40% партнеру
+            await db.execute("UPDATE users SET earnings = earnings + ? WHERE user_id = ?", (reward, referrer_id))
+            await db.commit()
+
+            # Уведомляем партнера
+            try:
+                await bot.send_message(
+                    chat_id=referrer_id,
+                    text=f"🎉 **Вам зачислено +{int(reward)} TMT!**\nВаш реферал совершил оплату.",
+                    parse_mode="Markdown"
+                )
+            except Exception:
+                pass
+
+    await callback.message.edit_text(
+        callback.message.text + f"\n\n✅ **Оплата подтверждена!** Партнёру начислено: {int(reward)} TMT.",
+        parse_mode="Markdown"
+    )
+    await callback.answer("Оплата подтверждена!")
+
+@dp.message(F.text.in_([
+    "🔗 Реферальная ссылка", 
+    "🔗 Referral Link", 
+    "🔗 Referal salgy"
+]))
 async def ref_handler(message: types.Message):
     user_id = message.from_user.id
     async with aiosqlite.connect("bot_database.db") as db:
-        async with db.execute("SELECT language FROM users WHERE user_id = ?", (user_id,)) as cursor:
+        async with db.execute("SELECT language, earnings FROM users WHERE user_id = ?", (user_id,)) as cursor:
             row = await cursor.fetchone()
             lang = row[0] if row else 'ru'
+            earnings = row[1] if (row and row[1]) else 0.0
 
         async with db.execute("SELECT COUNT(*) FROM users WHERE referrer_id = ?", (user_id,)) as cursor:
             count = (await cursor.fetchone())[0]
 
+        async with db.execute("SELECT SUM(purchases_count) FROM users WHERE referrer_id = ?", (user_id,)) as cursor:
+            paid_row = await cursor.fetchone()
+            paid_count = paid_row[0] if (paid_row and paid_row[0]) else 0
+
     bot_info = await bot.get_me()
     ref_link = f"https://t.me/{bot_info.username}?start=ref_{user_id}"
-    await message.answer(TEXTS[lang]['ref_info'].format(link=ref_link, count=count), parse_mode="Markdown")
+    
+    await message.answer(
+        TEXTS[lang]['ref_info'].format(
+            link=ref_link, 
+            count=count, 
+            paid_count=paid_count, 
+            earned=int(earnings)
+        ), 
+        parse_mode="Markdown"
+    )
 
-@dp.message(F.text.in_(["🌐 Язык / Language / Dil"]))
+@dp.message(F.text.in_([
+    "🌐 Язык / Language / Dil",
+    "🌐 Language / Язык / Dil",
+    "🌐 Dil / Language / Язык"
+]))
 async def change_lang_handler(message: types.Message):
     await message.answer("Выберите язык / Select language / Dil saýlaň:", reply_markup=get_lang_keyboard())
 
@@ -250,10 +338,11 @@ async def forward_to_admin(message: types.Message, state: FSMContext):
     username = f"@{message.from_user.username}" if message.from_user.username else "Отсутствует"
 
     async with aiosqlite.connect("bot_database.db") as db:
-        async with db.execute("SELECT referrer_id, language FROM users WHERE user_id = ?", (user_id,)) as cursor:
+        async with db.execute("SELECT referrer_id, language, last_selected_tariff FROM users WHERE user_id = ?", (user_id,)) as cursor:
             user_data = await cursor.fetchone()
             referrer_id = user_data[0] if user_data else None
             lang = user_data[1] if user_data else 'ru'
+            last_tariff = user_data[2] if (user_data and user_data[2]) else 100
 
     referrer_info = "Прямой заход (без реферала)"
     if referrer_id:
@@ -271,6 +360,7 @@ async def forward_to_admin(message: types.Message, state: FSMContext):
     )
 
     reply_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Подтвердить оплату (Начислить 40%)", callback_data=f"confirm_{user_id}_{last_tariff}")],
         [InlineKeyboardButton(text="💬 Ответить клиенту", callback_data=f"reply_{user_id}")]
     ])
 
