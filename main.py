@@ -1,18 +1,14 @@
 import subprocess
 import sys
 
-# Автоматическая установка зависимостей, если Railway запустил голый Python
+# Гарантированная установка всех библиотек ДО их импорта
 for pkg in ["aiogram==3.15.0", "aiosqlite==0.20.0", "aiohttp==3.10.11"]:
     try:
-        __import__(pkg.split("==")[0])
+        mod_name = pkg.split("==")[0]
+        __import__(mod_name)
     except ImportError:
+        print(f"Установка {pkg}...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
-
-import os
-import logging
-import asyncio
-import aiosqlite
-# ... весь остальной код остается как был ...
 
 import os
 import logging
@@ -27,7 +23,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 
 logging.basicConfig(level=logging.INFO)
 
-# Жестко прописанные данные
 BOT_TOKEN = "8923920954:AAGpJQyWtwCjeO8mR2s4RW9TeSnPm-UQ12Q"
 ADMIN_ID = 8735103964
 
@@ -37,7 +32,6 @@ dp = Dispatcher(storage=MemoryStorage())
 class AdminState(StatesGroup):
     waiting_for_reply = State()
 
-# Полный словарь текстов на трех языках (RU / EN / TK)
 TEXTS = {
     'ru': {
         'welcome': "👋 Здравствуйте! Выберите язык / Select language / Dil saýlaň:",
