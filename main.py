@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-# Авто-установка всех необходимых библиотек при запуске
+# Авто-установка необходимых библиотек
 for pkg in ["aiogram==3.15.0", "aiosqlite==0.20.0", "aiohttp==3.10.11"]:
     try:
         mod_name = pkg.split("==")[0]
@@ -14,9 +14,10 @@ import os
 import logging
 import asyncio
 import urllib.parse
+from datetime import datetime, timedelta
 import aiosqlite
 from aiogram import Bot, Dispatcher, F, types
-from aiogram.filters import CommandStart, CommandObject
+from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -35,6 +36,7 @@ class UserState(StatesGroup):
 
 class AdminState(StatesGroup):
     waiting_for_reply = State()
+    waiting_for_broadcast = State()
 
 TEXTS = {
     'ru': {
@@ -50,6 +52,8 @@ TEXTS = {
         'btn_buy': "🛒 Купить VPN",
         'btn_ref': "🔗 Реферальная ссылка",
         'btn_lang': "🌐 Язык / Language / Dil",
+        'btn_help': "❓ Инструкция",
+        'btn_test': "🎁 Тест на 24 часа",
         'tariffs_title': "⚡ **Выберите подходящий тариф VPN:**",
         'tariff_100_btn': "📱 100 манат ($5) — 1 устройство",
         'tariff_200_btn': "♾️ 200 манат ($10) — Безлимит устройств",
@@ -81,7 +85,23 @@ TEXTS = {
         'btn_i_paid': "✅ Я оплатил",
         'paid_notify_user': "⏳ Ваши данные отправлены оператору. Ожидайте подтверждения и ключи!",
         'enter_payout_info': "✍️ Введите номер карты или телефона для получения выплаты:",
-        'payout_sent': "✅ Заявка на вывод отправлена оператору!"
+        'payout_sent': "✅ Заявка на вывод отправлена оператору!",
+        'test_requested': "🎁 Заявка на тестовый период отправлена оператору! Ожидайте ключ.",
+        'test_already_used': "❌ Вы уже запрашивали тестовый период ранее.",
+        'instructions': (
+            "📖 **Инструкция по настройке VPN:**\n\n"
+            "📱 **Android:**\n"
+            "1. Скачайте приложение **v2rayNG** или **Happ** из Google Play.\n"
+            "2. Скопируйте ключ, полученный от оператора.\n"
+            "3. Откройте приложение, нажмите `+` -> `Импорт из буфера обмена`.\n"
+            "4. Нажмите на подключение.\n\n"
+            "🍏 **iOS (iPhone / iPad):**\n"
+            "1. Установите **Streisand** или **V2Box** из App Store.\n"
+            "2. Скопируйте ключ и вставьте его через плюсик `+` в приложении.\n\n"
+            "💻 **Windows / macOS:**\n"
+            "1. Используйте программу **v2rayN** или **Nekoray**.\n"
+            "2. Вставьте ключ из буфера обмена (`Ctrl+V`) и включите системный прокси."
+        )
     },
     'en': {
         'welcome': "👋 Hello! Select language / Выберите язык / Dil saýlaň:",
@@ -96,6 +116,8 @@ TEXTS = {
         'btn_buy': "🛒 Buy VPN",
         'btn_ref': "🔗 Referral Link",
         'btn_lang': "🌐 Language / Язык / Dil",
+        'btn_help': "❓ Instructions",
+        'btn_test': "🎁 24h Free Trial",
         'tariffs_title': "⚡ **Select your VPN plan:**",
         'tariff_100_btn': "📱 100 TMT ($5) — 1 device",
         'tariff_200_btn': "♾️ 200 TMT ($10) — Unlimited devices",
@@ -127,7 +149,15 @@ TEXTS = {
         'btn_i_paid': "✅ I have paid",
         'paid_notify_user': "⏳ Information sent to the operator. Please wait for verification and keys!",
         'enter_payout_info': "✍️ Enter your card or phone number for payout:",
-        'payout_sent': "✅ Payout request has been sent to the operator!"
+        'payout_sent': "✅ Payout request has been sent to the operator!",
+        'test_requested': "🎁 Trial request sent to the operator! Please wait for your key.",
+        'test_already_used': "❌ You have already used the free trial.",
+        'instructions': (
+            "📖 **VPN Setup Instructions:**\n\n"
+            "📱 **Android:** Download **v2rayNG** or **Happ** from Google Play. Copy your key and import from clipboard.\n"
+            "🍏 **iOS:** Install **Streisand** or **V2Box** from App Store. Import your key.\n"
+            "💻 **Windows / macOS:** Use **v2rayN** or **Nekoray**."
+        )
     },
     'tk': {
         'welcome': "👋 Salam! Dil saýlaň / Выберите язык / Select language:",
@@ -142,6 +172,8 @@ TEXTS = {
         'btn_buy': "🛒 VPN satyn almak",
         'btn_ref': "🔗 Referal salgy",
         'btn_lang': "🌐 Dil / Language / Язык",
+        'btn_help': "❓ Gözükdirme",
+        'btn_test': "🎁 24 sagatlyk synag",
         'tariffs_title': "⚡ **Töleg tarifini saýlaň:**",
         'tariff_100_btn': "📱 100 manat ($5) — 1 enjam",
         'tariff_200_btn': "♾️ 200 manat ($10) — Päksiz enjam",
@@ -173,7 +205,15 @@ TEXTS = {
         'btn_i_paid': "✅ Men töledim",
         'paid_notify_user': "⏳ Maglumatlar оператора ugradyldy. Barlag we açarlar üçin garaşyň!",
         'enter_payout_info': "✍️ Pul geçirmek üçin karta ýa-da telefon belgiňizi ýazyň:",
-        'payout_sent': "✅ Haýyşyňyz оператора ugradyldy!"
+        'payout_sent': "✅ Haýyşyňyz оператора ugradyldy!",
+        'test_requested': "🎁 Synag üçin haýyş ugradyldy! Açaryňyza garaşyň.",
+        'test_already_used': "❌ Siz eýýäm synag möhletini ulandyňyz.",
+        'instructions': (
+            "📖 **VPN sazlamak gözükdirmesi:**\n\n"
+            "📱 **Android:** Google Play-den **v2rayNG** ýa-da **Happ** programmasyny ýükläň. Açary göçürip alyň we goşuň.\n"
+            "🍏 **iOS:** App Store-dan **Streisand** ýa-da **V2Box** ýükläň.\n"
+            "💻 **Windows / macOS:** **v2rayN** ýa-da **Nekoray** ulan nyň."
+        )
     }
 }
 
@@ -187,7 +227,9 @@ async def init_db():
                 language TEXT DEFAULT 'ru',
                 earnings REAL DEFAULT 0.0,
                 purchases_count INTEGER DEFAULT 0,
-                last_selected_tariff INTEGER DEFAULT 100
+                last_selected_tariff INTEGER DEFAULT 100,
+                used_test INTEGER DEFAULT 0,
+                subscription_until TEXT
             )
         """)
         await db.commit()
@@ -204,8 +246,9 @@ def get_lang_keyboard():
 def get_main_keyboard(lang):
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text=TEXTS[lang]['btn_buy'])],
-            [KeyboardButton(text=TEXTS[lang]['btn_ref']), KeyboardButton(text=TEXTS[lang]['btn_lang'])]
+            [KeyboardButton(text=TEXTS[lang]['btn_buy']), KeyboardButton(text=TEXTS[lang]['btn_test'])],
+            [KeyboardButton(text=TEXTS[lang]['btn_ref']), KeyboardButton(text=TEXTS[lang]['btn_help'])],
+            [KeyboardButton(text=TEXTS[lang]['btn_lang'])]
         ],
         resize_keyboard=True
     )
@@ -272,6 +315,48 @@ async def buy_vpn_handler(message: types.Message):
 
     await message.answer(TEXTS[lang]['tariffs_title'], reply_markup=get_tariffs_keyboard(lang), parse_mode="Markdown")
 
+@dp.message(F.text.in_(["❓ Инструкция", "❓ Instructions", "❓ Gözükdirme"]))
+async def instructions_handler(message: types.Message):
+    user_id = message.from_user.id
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT language FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            lang = row[0] if (row and row[0]) else 'ru'
+
+    await message.answer(TEXTS[lang]['instructions'], parse_mode="Markdown")
+
+@dp.message(F.text.in_(["🎁 Тест на 24 часа", "🎁 24h Free Trial", "🎁 24 sagatlyk synag"]))
+async def test_period_handler(message: types.Message):
+    user_id = message.from_user.id
+    username = f"@{message.from_user.username}" if message.from_user.username else "Отсутствует"
+
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT language, used_test FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            lang = row[0] if row else 'ru'
+            used_test = row[1] if (row and row[1]) else 0
+
+    if used_test == 1:
+        await message.answer(TEXTS[lang]['test_already_used'])
+        return
+
+    async with aiosqlite.connect("bot_database.db") as db:
+        await db.execute("UPDATE users SET used_test = 1 WHERE user_id = ?", (user_id,))
+        await db.commit()
+
+    admin_msg = (
+        f"🎁 **ЗАПРОС ТЕСТОВОГО ПЕРИОДА (24 часа)!**\n\n"
+        f"👤 **Пользователь:** {username} (ID: `{user_id}`)\n"
+        f"🌐 **Язык:** {lang.upper()}\n"
+        f"📌 Выдайте тестовый ключ!"
+    )
+    reply_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💬 Выдать тестовый ключ", callback_data=f"reply_{user_id}")]
+    ])
+
+    await bot.send_message(chat_id=ADMIN_ID, text=admin_msg, parse_mode="Markdown", reply_markup=reply_kb)
+    await message.answer(TEXTS[lang]['test_requested'])
+
 @dp.callback_query(F.data.startswith("buy_"))
 async def process_tariff_selection(callback: types.CallbackQuery):
     parts = callback.data.split("_")
@@ -291,7 +376,7 @@ async def process_tariff_selection(callback: types.CallbackQuery):
 
     tariff_name = TEXTS[lang]['tariff_100_btn'] if tariff_code == 100 else TEXTS[lang]['tariff_200_btn']
 
-    referrer_info = "Прямой заход (без реферала)"
+    referrer_info = "Прямой заход"
     if referrer_id:
         async with aiosqlite.connect("bot_database.db") as db:
             async with db.execute("SELECT username FROM users WHERE user_id = ?", (referrer_id,)) as cursor:
@@ -384,9 +469,13 @@ async def confirm_payment_handler(callback: types.CallbackQuery):
     tariff_amount = int(parts[2])
 
     reward = tariff_amount * 0.40
+    until_date = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
 
     async with aiosqlite.connect("bot_database.db") as db:
-        await db.execute("UPDATE users SET purchases_count = purchases_count + 1 WHERE user_id = ?", (user_id,))
+        await db.execute(
+            "UPDATE users SET purchases_count = purchases_count + 1, subscription_until = ? WHERE user_id = ?",
+            (until_date, user_id)
+        )
         await db.commit()
 
         async with db.execute("SELECT referrer_id FROM users WHERE user_id = ?", (user_id,)) as cursor:
@@ -407,16 +496,13 @@ async def confirm_payment_handler(callback: types.CallbackQuery):
                 pass
 
     await callback.message.edit_text(
-        callback.message.text + f"\n\n✅ **Оплата подтверждена!** Партнёру начислено: {int(reward)} TMT.",
+        callback.message.text + f"\n\n✅ **Оплата подтверждена!** Подписка установлена до `{until_date}`. Партнёру начислено: {int(reward)} TMT.",
         parse_mode="Markdown"
     )
     await callback.answer("Оплата подтверждена!")
 
-@dp.message(F.text.in_([
-    "🔗 Реферальная ссылка", 
-    "🔗 Referral Link", 
-    "🔗 Referal salgy"
-]))
+# --- РЕФЕРАЛЬНАЯ СИСТЕМА И ВЫВОД ---
+@dp.message(F.text.in_(["🔗 Реферальная ссылка", "🔗 Referral Link", "🔗 Referal salgy"]))
 async def ref_handler(message: types.Message):
     user_id = message.from_user.id
     async with aiosqlite.connect("bot_database.db") as db:
@@ -523,6 +609,56 @@ async def complete_payout_handler(callback: types.CallbackQuery):
     )
     await callback.answer("Баланс обнулен!")
 
+# --- АДМИН ПАНЕЛЬ (/admin) & РАССЫЛКА ---
+@dp.message(Command("admin"), F.from_user.id == ADMIN_ID)
+async def admin_panel_cmd(message: types.Message):
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT COUNT(*) FROM users") as cursor:
+            total_users = (await cursor.fetchone())[0]
+        async with db.execute("SELECT SUM(purchases_count) FROM users") as cursor:
+            total_sales = (await cursor.fetchone())[0] or 0
+
+    stats_text = (
+        f"🛠 **ПАНЕЛЬ АДМИНИСТРАТОРА**\n\n"
+        f"👥 всего пользователей: **{total_users}**\n"
+        f"🛒 Всего проданных подписок: **{total_sales}**\n"
+    )
+
+    admin_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📢 Сделать рассылку всем", callback_data="start_broadcast")]
+    ])
+
+    await message.answer(stats_text, parse_mode="Markdown", reply_markup=admin_kb)
+
+@dp.callback_query(F.data == "start_broadcast", F.from_user.id == ADMIN_ID)
+async def start_broadcast_handler(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(AdminState.waiting_for_broadcast)
+    await callback.message.answer("✍️ Пришлите текст или медиа (фото/видео), которое нужно разослать всем пользователям:")
+    await callback.answer()
+
+@dp.message(AdminState.waiting_for_broadcast, F.from_user.id == ADMIN_ID)
+async def process_broadcast_msg(message: types.Message, state: FSMContext):
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT user_id FROM users") as cursor:
+            users = await cursor.fetchall()
+
+    success_count = 0
+    fail_count = 0
+
+    await message.answer("🚀 Рассылка начата...")
+
+    for user in users:
+        u_id = user[0]
+        try:
+            await bot.copy_message(chat_id=u_id, from_chat_id=message.chat.id, message_id=message.message_id)
+            success_count += 1
+            await asyncio.sleep(0.05) # Защита от спам-фильтра Telegram
+        except Exception:
+            fail_count += 1
+
+    await message.answer(f"📊 **Рассылка завершена!**\n\n✅ Успешно: {success_count}\n❌ Не доставлено (заблокировали бота): {fail_count}")
+    await state.clear()
+
 @dp.message(F.text.in_([
     "🌐 Язык / Language / Dil",
     "🌐 Language / Язык / Dil",
@@ -534,7 +670,7 @@ async def change_lang_handler(message: types.Message):
 @dp.message(F.chat.type == "private")
 async def forward_to_admin(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
-    if current_state in [AdminState.waiting_for_reply.state, UserState.waiting_for_payout_req.state]:
+    if current_state in [AdminState.waiting_for_reply.state, UserState.waiting_for_payout_req.state, AdminState.waiting_for_broadcast.state]:
         return
 
     user_id = message.from_user.id
@@ -547,7 +683,7 @@ async def forward_to_admin(message: types.Message, state: FSMContext):
             lang = user_data[1] if user_data else 'ru'
             last_tariff = user_data[2] if (user_data and user_data[2]) else 100
 
-    referrer_info = "Прямой заход (без реферала)"
+    referrer_info = "Прямой заход"
     if referrer_id:
         async with aiosqlite.connect("bot_database.db") as db:
             async with db.execute("SELECT username FROM users WHERE user_id = ?", (referrer_id,)) as cursor:
