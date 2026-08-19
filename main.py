@@ -43,6 +43,7 @@ TEXTS = {
         'welcome': "👋 Здравствуйте! Выберите язык / Select language / Dil saýlaň:",
         'lang_set': "✅ Язык установлен: Русский.\nВыберите действие в меню ниже или напишите сообщение оператору.",
         'msg_sent': "📩 Ваше сообщение отправлено оператору. Ожидайте ответа!",
+        'prompt_contact': "✍️ Напишите ваше сообщение, вопрос или отправьте чек прямо сюда в чат. Оператор ответит вам в ближайшее время!",
         'ref_info': (
             "🔗 **Ваша реферальная ссылка:**\n`{link}`\n\n"
             "👥 **Приглашено:** {count} чел.\n"
@@ -54,6 +55,7 @@ TEXTS = {
         'btn_lang': "🌐 Язык / Language / Dil",
         'btn_help': "❓ Инструкция",
         'btn_test': "🎁 Тест на 24 часа",
+        'btn_support': "👨‍💻 Написать оператору",
         'tariffs_title': "⚡ **Выберите подходящий тариф VPN:**",
         'tariff_100_btn': "📱 100 манат ($5) — 1 устройство",
         'tariff_200_btn': "♾️ 200 манат ($10) — Безлимит устройств",
@@ -107,6 +109,7 @@ TEXTS = {
         'welcome': "👋 Hello! Select language / Выберите язык / Dil saýlaň:",
         'lang_set': "✅ Language set: English.\nSelect an option from the menu below or send a message to the operator.",
         'msg_sent': "📩 Your message has been sent to the operator. Please wait for a reply!",
+        'prompt_contact': "✍️ Write your message, question, or send a receipt right here in this chat. The operator will reply shortly!",
         'ref_info': (
             "🔗 **Your referral link:**\n`{link}`\n\n"
             "👥 **Invited:** {count} users\n"
@@ -118,6 +121,7 @@ TEXTS = {
         'btn_lang': "🌐 Language / Язык / Dil",
         'btn_help': "❓ Instructions",
         'btn_test': "🎁 24h Free Trial",
+        'btn_support': "👨‍💻 Contact Operator",
         'tariffs_title': "⚡ **Select your VPN plan:**",
         'tariff_100_btn': "📱 100 TMT ($5) — 1 device",
         'tariff_200_btn': "♾️ 200 TMT ($10) — Unlimited devices",
@@ -163,6 +167,7 @@ TEXTS = {
         'welcome': "👋 Salam! Dil saýlaň / Выберите язык / Select language:",
         'lang_set': "✅ Dil saýlandy: Türkmen dili.\nAşakdaky menýudan bölümi saýlaň ýa-da оператора hat ýazyň.",
         'msg_sent': "📩 Hatyňyz оператора ugradyldy. Jogaba garaşyň!",
+        'prompt_contact': "✍️ Hatyňyzy, soragyňyzy ýa-da çekiňizi göni şu çata ugradyň. Оператор сизе tiz арада jogap берер!",
         'ref_info': (
             "🔗 **Siziň referal salgyňyz:**\n`{link}`\n\n"
             "👥 **Çagyrylanlar:** {count} adam\n"
@@ -174,6 +179,7 @@ TEXTS = {
         'btn_lang': "🌐 Dil / Language / Язык",
         'btn_help': "❓ Gözükdirme",
         'btn_test': "🎁 24 sagatlyk synag",
+        'btn_support': "👨‍💻 Operatora ýazmak",
         'tariffs_title': "⚡ **Töleg tarifini saýlaň:**",
         'tariff_100_btn': "📱 100 manat ($5) — 1 enjam",
         'tariff_200_btn': "♾️ 200 manat ($10) — Päksiz enjam",
@@ -248,7 +254,7 @@ def get_main_keyboard(lang):
         keyboard=[
             [KeyboardButton(text=TEXTS[lang]['btn_buy']), KeyboardButton(text=TEXTS[lang]['btn_test'])],
             [KeyboardButton(text=TEXTS[lang]['btn_ref']), KeyboardButton(text=TEXTS[lang]['btn_help'])],
-            [KeyboardButton(text=TEXTS[lang]['btn_lang'])]
+            [KeyboardButton(text=TEXTS[lang]['btn_support']), KeyboardButton(text=TEXTS[lang]['btn_lang'])]
         ],
         resize_keyboard=True
     )
@@ -314,6 +320,16 @@ async def buy_vpn_handler(message: types.Message):
             lang = row[0] if (row and row[0]) else 'ru'
 
     await message.answer(TEXTS[lang]['tariffs_title'], reply_markup=get_tariffs_keyboard(lang), parse_mode="Markdown")
+
+@dp.message(F.text.in_(["👨‍💻 Написать оператору", "👨‍💻 Contact Operator", "👨‍💻 Operatora ýazmak"]))
+async def contact_operator_handler(message: types.Message):
+    user_id = message.from_user.id
+    async with aiosqlite.connect("bot_database.db") as db:
+        async with db.execute("SELECT language FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            lang = row[0] if (row and row[0]) else 'ru'
+
+    await message.answer(TEXTS[lang]['prompt_contact'])
 
 @dp.message(F.text.in_(["❓ Инструкция", "❓ Instructions", "❓ Gözükdirme"]))
 async def instructions_handler(message: types.Message):
@@ -620,7 +636,7 @@ async def admin_panel_cmd(message: types.Message):
 
     stats_text = (
         f"🛠 **ПАНЕЛЬ АДМИНИСТРАТОРА**\n\n"
-        f"👥 всего пользователей: **{total_users}**\n"
+        f"👥 Всего пользователей: **{total_users}**\n"
         f"🛒 Всего проданных подписок: **{total_sales}**\n"
     )
 
@@ -652,11 +668,11 @@ async def process_broadcast_msg(message: types.Message, state: FSMContext):
         try:
             await bot.copy_message(chat_id=u_id, from_chat_id=message.chat.id, message_id=message.message_id)
             success_count += 1
-            await asyncio.sleep(0.05) # Защита от спам-фильтра Telegram
+            await asyncio.sleep(0.05)
         except Exception:
             fail_count += 1
 
-    await message.answer(f"📊 **Рассылка завершена!**\n\n✅ Успешно: {success_count}\n❌ Не доставлено (заблокировали бота): {fail_count}")
+    await message.answer(f"📊 **Рассылка завершена!**\n\n✅ Успешно: {success_count}\n❌ Не доставлено: {fail_count}")
     await state.clear()
 
 @dp.message(F.text.in_([
