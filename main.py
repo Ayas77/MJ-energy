@@ -836,7 +836,7 @@ async def process_shop_order_data(message: types.Message, state: FSMContext):
     await message.answer(TEXTS[lang]['shop_order_sent'])
     await state.clear()
 
-# ================= ТЕСТ 24 ЧАСА (С ПРОВЕРКОЙ НА 1 ЕДИНИЧНЫЙ ЗАПРОС) =================
+# ================= ТЕСТ 24 ЧАСА (ИСПРАВЛЕННЫЙ И БЕЗОПАСНЫЙ) =================
 @dp.message(F.text.in_(["🎁 Тест на 24 часа", "🎁 24-hour Test", "🎁 24 sagatlyk synag"]))
 async def request_test_menu(message: types.Message):
     user = message.from_user
@@ -848,29 +848,37 @@ async def request_test_menu(message: types.Message):
             res = await cursor.fetchone()
             has_requested = res[0] if res else 0
 
-        # Если пользователь уже делал запрос ранее
+        # Если пользователь уже запрашивал тест
         if has_requested == 1:
             await message.answer(TEXTS[lang]['test_already_used'])
             return
 
-        # Обновляем отметку о запросе в БД
-        await db.execute("UPDATE users SET test_requested = 1 WHERE user_id = ?", (user_id,))
-        await db.commit()
-
     username = f"@{user.username}" if user.username else "Нет username"
 
+    # Использование безопасной HTML-разметки против спецсимволов в юзернеймах
     admin_card = (
-        f"🎁 **ЗАПРОС ТЕСТА НА 24 ЧАСА!**\n\n"
-        f"👤 **Клиент:** {username} (ID: `{user.id}`)\n"
-        f"🌐 **Язык клиента:** {lang.upper()}"
+        f"🎁 <b>ЗАПРОС ТЕСТА НА 24 ЧАСА!</b>\n\n"
+        f"👤 <b>Клиент:</b> {username} (ID: <code>{user.id}</code>)\n"
+        f"🌐 <b>Язык клиента:</b> {lang.upper()}"
     )
 
     admin_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="💬 Ответить / Выдать доступ", callback_data=f"reply_user_{user.id}")]
     ])
 
-    await bot.send_message(ADMIN_ID, admin_card, reply_markup=admin_kb, parse_mode="Markdown")
-    await message.answer(TEXTS[lang]['test_requested'])
+    try:
+        # 1. Сначала пытаемся отправить сообщения
+        await bot.send_message(ADMIN_ID, admin_card, reply_markup=admin_kb, parse_mode="HTML")
+        await message.answer(TEXTS[lang]['test_requested'])
+
+        # 2. И только при успешной доставке записываем флаг в БД
+        async with aiosqlite.connect(DB_NAME) as db:
+            await db.execute("UPDATE users SET test_requested = 1 WHERE user_id = ?", (user_id,))
+            await db.commit()
+
+    except Exception as e:
+        logging.error(f"❌ Ошибка при отправке запроса теста от {user_id}: {e}")
+        await message.answer("⚠️ Произошла временная ошибка при отправке запроса. Попробуйте еще раз или напишите оператору.")
 
 # ================= РЕФЕРАЛЬНАЯ СИСТЕМА =================
 @dp.message(F.text.in_(["🔗 Реферальная ссылка", "🔗 Referral link", "🔗 Salgylanma çykgydy"]))
