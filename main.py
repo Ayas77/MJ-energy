@@ -64,48 +64,150 @@ async def init_db():
                 ref_by INTEGER DEFAULT NULL,
                 balance REAL DEFAULT 0.0,
                 ref_percent REAL DEFAULT 0.40,
-                purchases_count INTEGER DEFAULT 0
+                purchases_count INTEGER DEFAULT 0,
+                test_requested INTEGER DEFAULT 0
             )
         """)
+        # Миграция для существующих БД
+        try:
+            await db.execute("ALTER TABLE users ADD COLUMN test_requested INTEGER DEFAULT 0")
+        except Exception:
+            pass
         await db.commit()
 
-# ================= КАТАЛОГ ЦИФРОВЫХ ТОВАРОВ И УСЛУГ =================
+# ================= МНОГОЯЗЫЧНЫЙ КАТАЛОГ ЦИФРОВЫХ ТОВАРОВ И УСЛУГ =================
 SHOP_PRODUCTS = {
     # Telegram Premium
-    "tgp3": {"title": "Telegram Premium (3 месяца)", "price": "320 TMT / 12.5 USDT", "note": "⚠️ Без входа в аккаунт"},
-    "tgp6": {"title": "Telegram Premium (6 месяцев)", "price": "420 TMT / 16.6 USDT", "note": "⚠️ Без входа в аккаунт"},
-    "tgp12": {"title": "Telegram Premium (12 месяцев)", "price": "720 TMT / 30.25 USDT", "note": "⚠️ Без входа в аккаунт"},
+    "tgp3": {
+        "title": {"ru": "Telegram Premium (3 месяца)", "en": "Telegram Premium (3 months)", "tm": "Telegram Premium (3 aý)"},
+        "price": "320 TMT / 12.5 USDT",
+        "note": {"ru": "⚠️ Без входа в аккаунт", "en": "⚠️ No account login required", "tm": "⚠️ Akkaunta girilmezden"}
+    },
+    "tgp6": {
+        "title": {"ru": "Telegram Premium (6 месяцев)", "en": "Telegram Premium (6 months)", "tm": "Telegram Premium (6 aý)"},
+        "price": "420 TMT / 16.6 USDT",
+        "note": {"ru": "⚠️ Без входа в аккаунт", "en": "⚠️ No account login required", "tm": "⚠️ Akkaunta girilmezden"}
+    },
+    "tgp12": {
+        "title": {"ru": "Telegram Premium (12 месяцев)", "en": "Telegram Premium (12 months)", "tm": "Telegram Premium (12 aý)"},
+        "price": "720 TMT / 30.25 USDT",
+        "note": {"ru": "⚠️ Без входа в аккаунт", "en": "⚠️ No account login required", "tm": "⚠️ Akkaunta girilmezden"}
+    },
     
     # Telegram Stars
-    "s100": {"title": "Telegram Stars (100 ⭐️)", "price": "60 TMT", "note": "Пополнение через ID или юзернейм"},
-    "s150": {"title": "Telegram Stars (150 ⭐️)", "price": "75 TMT", "note": "Пополнение через ID или юзернейм"},
-    "s250": {"title": "Telegram Stars (250 ⭐️)", "price": "120 TMT", "note": "Пополнение через ID или юзернейм"},
-    "s350": {"title": "Telegram Stars (350 ⭐️)", "price": "170 TMT", "note": "Пополнение через ID или юзернейм"},
-    "s500": {"title": "Telegram Stars (500 ⭐️)", "price": "230 TMT", "note": "Пополнение через ID или юзернейм"},
-    "s750": {"title": "Telegram Stars (750 ⭐️)", "price": "330 TMT", "note": "Пополнение через ID или юзернейм"},
-    "s1000": {"title": "Telegram Stars (1000 ⭐️)", "price": "440 TMT", "note": "Пополнение через ID или юзернейм"},
+    "s100": {
+        "title": {"ru": "Telegram Stars (100 ⭐️)", "en": "Telegram Stars (100 ⭐️)", "tm": "Telegram Stars (100 ⭐️)"},
+        "price": "60 TMT",
+        "note": {"ru": "Пополнение через ID или юзернейм", "en": "Top-up via ID or Username", "tm": "ID ýa-da ulanyjy ady arkaly doldurmak"}
+    },
+    "s150": {
+        "title": {"ru": "Telegram Stars (150 ⭐️)", "en": "Telegram Stars (150 ⭐️)", "tm": "Telegram Stars (150 ⭐️)"},
+        "price": "75 TMT",
+        "note": {"ru": "Пополнение через ID или юзернейм", "en": "Top-up via ID or Username", "tm": "ID ýa-da ulanyjy ady arkaly doldurmak"}
+    },
+    "s250": {
+        "title": {"ru": "Telegram Stars (250 ⭐️)", "en": "Telegram Stars (250 ⭐️)", "tm": "Telegram Stars (250 ⭐️)"},
+        "price": "120 TMT",
+        "note": {"ru": "Пополнение через ID или юзернейм", "en": "Top-up via ID or Username", "tm": "ID ýa-da ulanyjy ady arkaly doldurmak"}
+    },
+    "s350": {
+        "title": {"ru": "Telegram Stars (350 ⭐️)", "en": "Telegram Stars (350 ⭐️)", "tm": "Telegram Stars (350 ⭐️)"},
+        "price": "170 TMT",
+        "note": {"ru": "Пополнение через ID или юзернейм", "en": "Top-up via ID or Username", "tm": "ID ýa-da ulanyjy ady arkaly doldurmak"}
+    },
+    "s500": {
+        "title": {"ru": "Telegram Stars (500 ⭐️)", "en": "Telegram Stars (500 ⭐️)", "tm": "Telegram Stars (500 ⭐️)"},
+        "price": "230 TMT",
+        "note": {"ru": "Пополнение через ID или юзернейм", "en": "Top-up via ID or Username", "tm": "ID ýa-da ulanyjy ady arkaly doldurmak"}
+    },
+    "s750": {
+        "title": {"ru": "Telegram Stars (750 ⭐️)", "en": "Telegram Stars (750 ⭐️)", "tm": "Telegram Stars (750 ⭐️)"},
+        "price": "330 TMT",
+        "note": {"ru": "Пополнение через ID или юзернейм", "en": "Top-up via ID or Username", "tm": "ID ýa-da ulanyjy ady arkaly doldurmak"}
+    },
+    "s1000": {
+        "title": {"ru": "Telegram Stars (1000 ⭐️)", "en": "Telegram Stars (1000 ⭐️)", "tm": "Telegram Stars (1000 ⭐️)"},
+        "price": "440 TMT",
+        "note": {"ru": "Пополнение через ID или юзернейм", "en": "Top-up via ID or Username", "tm": "ID ýa-da ulanyjy ady arkaly doldurmak"}
+    },
 
     # PUBG Mobile UC
-    "uc325": {"title": "PUBG Mobile (325 UC)", "price": "130 TMT", "note": "Пополнение по Player ID"},
-    "uc660": {"title": "PUBG Mobile (660 UC)", "price": "230 TMT", "note": "Пополнение по Player ID"},
-    "uc1800": {"title": "PUBG Mobile (1800 UC)", "price": "550 TMT", "note": "Пополнение по Player ID"},
-    "uc3850": {"title": "PUBG Mobile (3850 UC)", "price": "1070 TMT", "note": "Пополнение по Player ID"},
+    "uc325": {
+        "title": {"ru": "PUBG Mobile (325 UC)", "en": "PUBG Mobile (325 UC)", "tm": "PUBG Mobile (325 UC)"},
+        "price": "130 TMT",
+        "note": {"ru": "Пополнение по Player ID", "en": "Top-up via Player ID", "tm": "Player ID arkaly doldurmak"}
+    },
+    "uc660": {
+        "title": {"ru": "PUBG Mobile (660 UC)", "en": "PUBG Mobile (660 UC)", "tm": "PUBG Mobile (660 UC)"},
+        "price": "230 TMT",
+        "note": {"ru": "Пополнение по Player ID", "en": "Top-up via Player ID", "tm": "Player ID arkaly doldurmak"}
+    },
+    "uc1800": {
+        "title": {"ru": "PUBG Mobile (1800 UC)", "en": "PUBG Mobile (1800 UC)", "tm": "PUBG Mobile (1800 UC)"},
+        "price": "550 TMT",
+        "note": {"ru": "Пополнение по Player ID", "en": "Top-up via Player ID", "tm": "Player ID arkaly doldurmak"}
+    },
+    "uc3850": {
+        "title": {"ru": "PUBG Mobile (3850 UC)", "en": "PUBG Mobile (3850 UC)", "tm": "PUBG Mobile (3850 UC)"},
+        "price": "1070 TMT",
+        "note": {"ru": "Пополнение по Player ID", "en": "Top-up via Player ID", "tm": "Player ID arkaly doldurmak"}
+    },
 
     # TikTok Coins
-    "tt500": {"title": "TikTok 500 Монет 🌕", "price": "166 TMT", "note": "📡 С входом в аккаунт"},
-    "tt1000": {"title": "TikTok 1000 Монет 🌕", "price": "3200 TMT", "note": "📡 С входом в аккаунт"},
+    "tt500": {
+        "title": {"ru": "TikTok 500 Монет 🌕", "en": "TikTok 500 Coins 🌕", "tm": "TikTok 500 Jeton 🌕"},
+        "price": "166 TMT",
+        "note": {"ru": "📡 С входом в аккаунт", "en": "📡 With account login", "tm": "📡 Akkaunta girmek bilen"}
+    },
+    "tt1000": {
+        "title": {"ru": "TikTok 1000 Монет 🌕", "en": "TikTok 1000 Coins 🌕", "tm": "TikTok 1000 Jeton 🌕"},
+        "price": "3200 TMT",
+        "note": {"ru": "📡 С входом в аккаунт", "en": "📡 With account login", "tm": "📡 Akkaunta girmek bilen"}
+    },
 
     # Belet
-    "bel_std": {"title": "Belet Standart (1 месяц)", "price": "40 TMT", "note": "Пополнение по номеру телефона / аккаунту"},
-    "bel_prm": {"title": "Belet Premium (1 месяц)", "price": "75 TMT", "note": "Пополнение по номеру телефона / аккаунту"},
-    "bel_msc": {"title": "Belet Music (1 месяц)", "price": "25 TMT", "note": "Пополнение по номеру телефона / аккаунту"},
+    "bel_std": {
+        "title": {"ru": "Belet Standart (1 месяц)", "en": "Belet Standart (1 month)", "tm": "Belet Standart (1 aý)"},
+        "price": "40 TMT",
+        "note": {"ru": "Пополнение по номеру телефона / аккаунту", "en": "Top-up via phone number / account", "tm": "Telefon belgisi / akkaunt arkaly doldurmak"}
+    },
+    "bel_prm": {
+        "title": {"ru": "Belet Premium (1 месяц)", "en": "Belet Premium (1 month)", "tm": "Belet Premium (1 aý)"},
+        "price": "75 TMT",
+        "note": {"ru": "Пополнение по номеру телефона / аккаунту", "en": "Top-up via phone number / account", "tm": "Telefon belgisi / akkaunt arkaly doldurmak"}
+    },
+    "bel_msc": {
+        "title": {"ru": "Belet Music (1 месяц)", "en": "Belet Music (1 month)", "tm": "Belet Music (1 aý)"},
+        "price": "25 TMT",
+        "note": {"ru": "Пополнение по номеру телефона / аккаунту", "en": "Top-up via phone number / account", "tm": "Telefon belgisi / akkaunt arkaly doldurmak"}
+    },
 
     # Exchange & Top-ups
-    "ex_usdt": {"title": "Продажа USDT 💸", "price": "25 TMT / 1 USDT", "note": "Укажите нужную сумму и кошелек"},
-    "ex_rub": {"title": "Пополнение RUBL 🇷🇺", "price": "Курс 3.4", "note": "Укажите реквизиты карты / кошелька"},
-    "ex_usd": {"title": "USD (Visa 📱 / PayPal 📱)", "price": "32 TMT", "note": "Укажите счет или реквизиты"},
-    "ex_tgsms": {"title": "Tg SMS толег", "price": "60 TMT", "note": "Укажите номер телефона"},
-    "ex_tmt": {"title": "Оплата услуг TMT (-20%)", "price": "Скидка -20%", "note": "Телефон, WiFi, Belet и др."}
+    "ex_usdt": {
+        "title": {"ru": "Продажа USDT 💸", "en": "Sell USDT 💸", "tm": "USDT satmak 💸"},
+        "price": "25 TMT / 1 USDT",
+        "note": {"ru": "Укажите нужную сумму и кошелек", "en": "Specify amount and wallet address", "tm": "Gerekli mukdary we gapjyk salgysyny görkeziň"}
+    },
+    "ex_rub": {
+        "title": {"ru": "Пополнение RUBL 🇷🇺", "en": "Top-up RUB 🇷🇺", "tm": "RUB doldurmak 🇷🇺"},
+        "price": "Курс / Rate / Kurs 3.4",
+        "note": {"ru": "Укажите реквизиты карты / кошелька", "en": "Specify card / wallet details", "tm": "Karta / gapjyk maglumatlaryny görkeziň"}
+    },
+    "ex_usd": {
+        "title": {"ru": "USD (Visa 📱 / PayPal 📱)", "en": "USD (Visa 📱 / PayPal 📱)", "tm": "USD (Visa 📱 / PayPal 📱)"},
+        "price": "32 TMT",
+        "note": {"ru": "Укажите счет или реквизиты", "en": "Specify account or payment details", "tm": "Hasap ýa-da töleg maglumatlaryny görkeziň"}
+    },
+    "ex_tgsms": {
+        "title": {"ru": "Tg SMS толег", "en": "Tg SMS payment", "tm": "Tg SMS tölegi"},
+        "price": "60 TMT",
+        "note": {"ru": "Укажите номер телефона", "en": "Specify phone number", "tm": "Telefon belgisini görkeziň"}
+    },
+    "ex_tmt": {
+        "title": {"ru": "Оплата услуг TMT (-20%)", "en": "TMT Service Payment (-20%)", "tm": "TMT hyzmatlary tölegi (-20%)"},
+        "price": "Скидка / Discount / Arzanlaşyk -20%",
+        "note": {"ru": "Телефон, WiFi, Belet и др.", "en": "Phone, WiFi, Belet etc.", "tm": "Telefon, WiFi, Belet we başgalar"}
+    }
 }
 
 # ================= ТЕКСТЫ И ЯЗЫКИ =================
@@ -131,10 +233,14 @@ TEXTS = {
         'send_receipt_msg': "📸 Пожалуйста, отправьте чек или скриншот оплаты сюда в чат.",
         'receipt_received': "⏳ Чек получен и отправлен администратору на проверку. Ожидайте выдачи доступа!",
         'test_requested': "⏳ Запрос на тест 24 часа отправлен администратору. Ожидайте!",
+        'test_already_used': "⚠️ Вы уже запрашивали бесплатный тест на 24 часа! Повторный запрос недоступен.",
         'op_prompt': "✍️ Напишите ваше сообщение для оператора:",
         'op_sent': "📨 Ваше сообщение отправлено оператору. Ожидайте ответа!",
+        'shop_catalog_title': "🛒 **Каталог цифровых товаров и услуг:**\nВыберите нужную категорию:",
+        'btn_back_catalog': "🔙 Назад в меню",
         'shop_prompt': "✍️ Отправьте данные для выполнения заказа (ID аккаунта, логин, номер телефона или удобный способ связи):",
-        'shop_order_sent': "⏳ Ваш заказ оформлен и отправлен оператору! Ожидайте ответа или подтверждения."
+        'shop_order_sent': "⏳ Ваш заказ оформлен и отправлен оператору! Ожидайте ответа или подтверждения.",
+        'btn_order_now': "🚀 Оформить заказ"
     },
     'en': {
         'welcome': "👋 Hello! Choose an action from the menu below or write a message to the operator.",
@@ -157,10 +263,14 @@ TEXTS = {
         'send_receipt_msg': "📸 Please send the payment receipt/screenshot here in the chat.",
         'receipt_received': "⏳ Receipt received and sent to administrator for verification. Please wait!",
         'test_requested': "⏳ 24-hour test request sent to administrator. Please wait!",
+        'test_already_used': "⚠️ You have already requested a 24-hour free trial! Re-requesting is not available.",
         'op_prompt': "✍️ Write your message to the operator:",
         'op_sent': "📨 Your message has been sent to the operator. Please wait for a reply!",
+        'shop_catalog_title': "🛒 **Digital Goods & Services Catalog:**\nSelect a category:",
+        'btn_back_catalog': "🔙 Back to menu",
         'shop_prompt': "✍️ Please send account ID, username, phone number, or details required for the order:",
-        'shop_order_sent': "⏳ Your order has been placed and sent to the operator! Please wait for a response."
+        'shop_order_sent': "⏳ Your order has been placed and sent to the operator! Please wait for a response.",
+        'btn_order_now': "🚀 Place Order"
     },
     'tm': {
         'welcome': "👋 Salam! Aşakdaky menýudan hereketi saýlaň ýa-da operatora hat ýazyň.",
@@ -180,13 +290,17 @@ TEXTS = {
         'btn_paid': "✅ Men töledim",
         'btn_cancel': "❌ Ýatyrmak",
         'order_cancelled': "❌ Sargyt ýatyryldy.",
-        'send_receipt_msg': "📸 Haýyş edýäris, töleg çegini ýa-da skrinşotyny şu ýere uwradyň.",
+        'send_receipt_msg': "📸 Haýyş edýäris, töleg çegini ýa-da skrinşotyny şu ýere ugradyň.",
         'receipt_received': "⏳ Çek alyndy we barlamak üçin meňzedijä ugradyldy. Garaşyň!",
         'test_requested': "⏳ 24 sagatlyk synag haýyşy meňzedijä ugradyldy. Garaşyň!",
+        'test_already_used': "⚠️ Siz eýýäm 24 sagatlyk mugt synagy haýyş etdiňiz! Gaýtadan haýyş etmek mümkin däl.",
         'op_prompt': "✍️ Operatora hatyňyzy ýazyň:",
         'op_sent': "📨 Siziň hatyňyz operatora ugradyldy. Hata garaşyň!",
+        'shop_catalog_title': "🛒 **Sanjymly harytlar we hyzmatlar katalogy:**\nGerekli kategoriýany saýlaň:",
+        'btn_back_catalog': "🔙 Menýua dolanmak",
         'shop_prompt': "✍️ Sargydy ýerine ýetirmek üçin maglumatlary (ID, telefon nomer ýa-da login) ugradyň:",
-        'shop_order_sent': "⏳ Siziň sargydyňyz kabul edildi we operatora ugradyldy! Garaşyň."
+        'shop_order_sent': "⏳ Siziň sargydyňyz kabul edildi we operatora ugradyldy! Garaşyň.",
+        'btn_order_now': "🚀 Sargyt etmek"
     }
 }
 
@@ -210,14 +324,31 @@ def get_lang_keyboard():
         [InlineKeyboardButton(text="🇹🇲 Türkmen", callback_data="set_lang_tm")]
     ])
 
-def get_shop_categories_kb():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="⭐️ Telegram (Premium & Stars)", callback_data="shop_cat_tg")],
-        [InlineKeyboardButton(text="❤️ PUBG Mobile UC", callback_data="shop_cat_pubg")],
-        [InlineKeyboardButton(text="🌕 TikTok Монеты", callback_data="shop_cat_tiktok")],
-        [InlineKeyboardButton(text="🔵 Подписки Belet", callback_data="shop_cat_belet")],
-        [InlineKeyboardButton(text="🪙 Обмен валют / Оплата услуг", callback_data="shop_cat_exchange")]
-    ])
+def get_shop_categories_kb(lang='ru'):
+    if lang == 'en':
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⭐️ Telegram (Premium & Stars)", callback_data="shop_cat_tg")],
+            [InlineKeyboardButton(text="❤️ PUBG Mobile UC", callback_data="shop_cat_pubg")],
+            [InlineKeyboardButton(text="🌕 TikTok Coins", callback_data="shop_cat_tiktok")],
+            [InlineKeyboardButton(text="🔵 Belet Subscriptions", callback_data="shop_cat_belet")],
+            [InlineKeyboardButton(text="🪙 Exchange / Payments", callback_data="shop_cat_exchange")]
+        ])
+    elif lang == 'tm':
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⭐️ Telegram (Premium & Stars)", callback_data="shop_cat_tg")],
+            [InlineKeyboardButton(text="❤️ PUBG Mobile UC", callback_data="shop_cat_pubg")],
+            [InlineKeyboardButton(text="🌕 TikTok Jetonlar", callback_data="shop_cat_tiktok")],
+            [InlineKeyboardButton(text="🔵 Belet Ýazylmalar", callback_data="shop_cat_belet")],
+            [InlineKeyboardButton(text="🪙 Walýuta çalşygy / Tölegler", callback_data="shop_cat_exchange")]
+        ])
+    else: # ru
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⭐️ Telegram (Premium & Stars)", callback_data="shop_cat_tg")],
+            [InlineKeyboardButton(text="❤️ PUBG Mobile UC", callback_data="shop_cat_pubg")],
+            [InlineKeyboardButton(text="🌕 TikTok Монеты", callback_data="shop_cat_tiktok")],
+            [InlineKeyboardButton(text="🔵 Подписки Belet", callback_data="shop_cat_belet")],
+            [InlineKeyboardButton(text="🪙 Обмен валют / Оплата услуг", callback_data="shop_cat_exchange")]
+        ])
 
 # ================= ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =================
 async def get_user_lang(user_id):
@@ -478,31 +609,39 @@ async def admin_approve_payment(callback: types.CallbackQuery):
         pass
     await callback.answer()
 
-# ================= МАГАЗИН ЦИФРОВЫХ ТОВАРОВ И УСЛУГ =================
+# ================= МАГАЗИН ЦИФРОВЫХ ТОВАРОВ И УСЛУГ (МНОГОЯЗЫЧНЫЙ) =================
 @dp.message(F.text.in_(["🛍 Товары / Донаты", "🛍 Digital Goods / Top-up", "🛍 Harytlar / Donatlar"]))
 async def shop_main_menu(message: types.Message):
-    await message.answer("🛒 **Каталог цифровых товаров и услуг:**\nВыберите нужную категорию:", reply_markup=get_shop_categories_kb(), parse_mode="Markdown")
+    lang = await get_user_lang(message.from_user.id)
+    t = TEXTS[lang]
+    await message.answer(t['shop_catalog_title'], reply_markup=get_shop_categories_kb(lang), parse_mode="Markdown")
 
 @dp.callback_query(F.data == "shop_main_menu")
 async def shop_back_to_main_menu(callback: types.CallbackQuery):
-    await callback.message.edit_text("🛒 **Каталог цифровых товаров и услуг:**\nВыберите нужную категорию:", reply_markup=get_shop_categories_kb(), parse_mode="Markdown")
+    lang = await get_user_lang(callback.from_user.id)
+    t = TEXTS[lang]
+    await callback.message.edit_text(t['shop_catalog_title'], reply_markup=get_shop_categories_kb(lang), parse_mode="Markdown")
     await callback.answer()
 
 @dp.callback_query(F.data.startswith("shop_cat_"))
 async def shop_show_category_items(callback: types.CallbackQuery):
     cat = callback.data.split("_")[-1]
+    lang = await get_user_lang(callback.from_user.id)
+    t = TEXTS[lang]
+
+    back_btn = InlineKeyboardButton(text=t['btn_back_catalog'], callback_data="shop_main_menu")
 
     if cat == "tg":
         text = "⭐️ **Telegram Premium & Stars:**"
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🎁 Premium 3 мес (320 TMT / 12.5 USDT)", callback_data="shop_item_tgp3")],
-            [InlineKeyboardButton(text="🎁 Premium 6 мес (420 TMT / 16.6 USDT)", callback_data="shop_item_tgp6")],
-            [InlineKeyboardButton(text="🎁 Premium 12 мес (720 TMT / 30.25 USDT)", callback_data="shop_item_tgp12")],
+            [InlineKeyboardButton(text="🎁 Premium 3 " + ("мес" if lang=='ru' else "m" if lang=='en' else "aý") + " (320 TMT / 12.5 USDT)", callback_data="shop_item_tgp3")],
+            [InlineKeyboardButton(text="🎁 Premium 6 " + ("мес" if lang=='ru' else "m" if lang=='en' else "aý") + " (420 TMT / 16.6 USDT)", callback_data="shop_item_tgp6")],
+            [InlineKeyboardButton(text="🎁 Premium 12 " + ("мес" if lang=='ru' else "m" if lang=='en' else "aý") + " (720 TMT / 30.25 USDT)", callback_data="shop_item_tgp12")],
             [InlineKeyboardButton(text="⭐️ 100 Stars (60 TMT)", callback_data="shop_item_s100"), InlineKeyboardButton(text="⭐️ 150 Stars (75 TMT)", callback_data="shop_item_s150")],
             [InlineKeyboardButton(text="⭐️ 250 Stars (120 TMT)", callback_data="shop_item_s250"), InlineKeyboardButton(text="⭐️ 350 Stars (170 TMT)", callback_data="shop_item_s350")],
             [InlineKeyboardButton(text="⭐️ 500 Stars (230 TMT)", callback_data="shop_item_s500"), InlineKeyboardButton(text="⭐️ 750 Stars (330 TMT)", callback_data="shop_item_s750")],
             [InlineKeyboardButton(text="⭐️ 1000 Stars (440 TMT)", callback_data="shop_item_s1000")],
-            [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="shop_main_menu")]
+            [back_btn]
         ])
     elif cat == "pubg":
         text = "❤️ **PUBG Mobile UC:**"
@@ -511,32 +650,32 @@ async def shop_show_category_items(callback: types.CallbackQuery):
             [InlineKeyboardButton(text="660 UC — 230 TMT", callback_data="shop_item_uc660")],
             [InlineKeyboardButton(text="1800 UC — 550 TMT", callback_data="shop_item_uc1800")],
             [InlineKeyboardButton(text="3850 UC — 1070 TMT", callback_data="shop_item_uc3850")],
-            [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="shop_main_menu")]
+            [back_btn]
         ])
     elif cat == "tiktok":
-        text = "🌕 **TikTok Монеты / Jeton:**"
+        text = "🌕 **TikTok Монеты / Coins / Jeton:**"
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="500 🌕 — 166 TMT", callback_data="shop_item_tt500")],
             [InlineKeyboardButton(text="1000 🌕 — 3200 TMT", callback_data="shop_item_tt1000")],
-            [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="shop_main_menu")]
+            [back_btn]
         ])
     elif cat == "belet":
-        text = "🔵 **Подписки Belet:**"
+        text = "🔵 **Belet:**"
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Standart (1 мес) — 40 TMT", callback_data="shop_item_bel_std")],
-            [InlineKeyboardButton(text="Premium (1 мес) — 75 TMT", callback_data="shop_item_bel_prm")],
-            [InlineKeyboardButton(text="Music (1 мес) — 25 TMT", callback_data="shop_item_bel_msc")],
-            [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="shop_main_menu")]
+            [InlineKeyboardButton(text="Standart (1 " + ("мес" if lang=='ru' else "m" if lang=='en' else "aý") + ") — 40 TMT", callback_data="shop_item_bel_std")],
+            [InlineKeyboardButton(text="Premium (1 " + ("мес" if lang=='ru' else "m" if lang=='en' else "aý") + ") — 75 TMT", callback_data="shop_item_bel_prm")],
+            [InlineKeyboardButton(text="Music (1 " + ("мес" if lang=='ru' else "m" if lang=='en' else "aý") + ") — 25 TMT", callback_data="shop_item_bel_msc")],
+            [back_btn]
         ])
     else:  # exchange
-        text = "🪙 **Обмен валют / Оплата услуг:**"
+        text = "🪙 **Обмен / Exchange / Çalşyk:**"
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="💸 USDT ➡️ 25 TMT", callback_data="shop_item_ex_usdt")],
-            [InlineKeyboardButton(text="🇷🇺 RUBL ➡️ курс 3.4", callback_data="shop_item_ex_rub")],
+            [InlineKeyboardButton(text="🇷🇺 RUBL ➡️ " + ("курс" if lang=='ru' else "rate" if lang=='en' else "kurs") + " 3.4", callback_data="shop_item_ex_rub")],
             [InlineKeyboardButton(text="💵 USD (Visa/PayPal) ➡️ 32 TMT", callback_data="shop_item_ex_usd")],
-            [InlineKeyboardButton(text="📱 Tg SMS toleg ➡️ 60 TMT", callback_data="shop_item_ex_tgsms")],
-            [InlineKeyboardButton(text="🇹🇲 TMT (-20% Телефон, WiFi, Belet)", callback_data="shop_item_ex_tmt")],
-            [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="shop_main_menu")]
+            [InlineKeyboardButton(text="📱 Tg SMS ➡️ 60 TMT", callback_data="shop_item_ex_tgsms")],
+            [InlineKeyboardButton(text="🇹🇲 TMT (-20%)", callback_data="shop_item_ex_tmt")],
+            [back_btn]
         ])
 
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
@@ -551,19 +690,47 @@ async def shop_item_detail(callback: types.CallbackQuery):
         await callback.answer("⚠️ Товар не найден!", show_alert=True)
         return
 
-    card_text = (
-        f"📦 **Товар / Услуга:** {product['title']}\n"
-        f"💰 **Цена:** {product['price']}\n"
-        f"📌 **Примечание:** {product['note']}\n\n"
-        "💳 **Реквизиты для оплаты:**\n"
-        "📱 `+99362565792` / `+99361843366`\n"
-        "💎 `TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv` (USDT)\n\n"
-        f"👇 *Нажмите кнопку ниже, чтобы оформить заказ через оператора:*"
-    )
+    lang = await get_user_lang(callback.from_user.id)
+    t = TEXTS[lang]
+
+    title = product['title'].get(lang, product['title']['ru'])
+    note = product['note'].get(lang, product['note']['ru'])
+    price = product['price']
+
+    if lang == 'en':
+        card_text = (
+            f"📦 **Item / Service:** {title}\n"
+            f"💰 **Price:** {price}\n"
+            f"📌 **Note:** {note}\n\n"
+            "💳 **Payment Requisites:**\n"
+            "📱 `+99362565792` / `+99361843366`\n"
+            "💎 `TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv` (USDT)\n\n"
+            f"👇 *Click the button below to place order via operator:*"
+        )
+    elif lang == 'tm':
+        card_text = (
+            f"📦 **Haryt / Hyzmat:** {title}\n"
+            f"💰 **Bahasy:** {price}\n"
+            f"📌 **Bellik:** {note}\n\n"
+            "💳 **Töleg maglumatlary:**\n"
+            "📱 `+99362565792` / `+99361843366`\n"
+            "💎 `TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv` (USDT)\n\n"
+            f"👇 *Operator arkaly sargyt etmek üçin aşakdaky düwmä basyň:*"
+        )
+    else:
+        card_text = (
+            f"📦 **Товар / Услуга:** {title}\n"
+            f"💰 **Цена:** {price}\n"
+            f"📌 **Примечание:** {note}\n\n"
+            "💳 **Реквизиты для оплаты:**\n"
+            "📱 `+99362565792` / `+99361843366`\n"
+            "💎 `TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv` (USDT)\n\n"
+            f"👇 *Нажмите кнопку ниже, чтобы оформить заказ через оператора:*"
+        )
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🚀 Оформить заказ", callback_data=f"order_prod_{item_code}")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="shop_main_menu")]
+        [InlineKeyboardButton(text=t['btn_order_now'], callback_data=f"order_prod_{item_code}")],
+        [InlineKeyboardButton(text=t['btn_back_catalog'], callback_data="shop_main_menu")]
     ])
 
     await callback.message.edit_text(card_text, reply_markup=kb, parse_mode="Markdown")
@@ -578,21 +745,49 @@ async def start_product_order(callback: types.CallbackQuery, state: FSMContext):
         await callback.answer("⚠️ Ошибка вызова товара!", show_alert=True)
         return
 
-    await state.update_data(item_title=product['title'], item_price=product['price'], item_note=product['note'])
+    lang = await get_user_lang(callback.from_user.id)
+    t = TEXTS[lang]
+
+    title = product['title'].get(lang, product['title']['ru'])
+    note = product['note'].get(lang, product['note']['ru'])
+    price = product['price']
+
+    await state.update_data(item_title=title, item_price=price, item_note=note)
     
-    payment_info = (
-        f"📦 **Товар:** {product['title']}\n"
-        f"💰 **Цена:** {product['price']}\n\n"
-        "💳 **Реквизиты для оплаты:**\n\n"
-        "📱 **По номеру телефона:**\n`+99362565792` / `+99361843366`\n\n"
-        "💎 **Криптовалюта (USDT TRC20):**\n`TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv`\n\n"
-        "⚠️ *(Если возникают проблемы с переводом между номерами, используйте терминал)*\n\n"
-        "*(После перевода нажмите кнопку ниже)*"
-    )
+    if lang == 'en':
+        payment_info = (
+            f"📦 **Item:** {title}\n"
+            f"💰 **Price:** {price}\n\n"
+            "💳 **Payment Requisites:**\n\n"
+            "📱 **Via phone number:**\n`+99362565792` / `+99361843366`\n\n"
+            "💎 **Cryptocurrency (USDT TRC20):**\n`TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv`\n\n"
+            "⚠️ *(If you have issues with transfer between numbers, use terminal)*\n\n"
+            "*(After transfer, click the button below)*"
+        )
+    elif lang == 'tm':
+        payment_info = (
+            f"📦 **Haryt:** {title}\n"
+            f"💰 **Bahasy:** {price}\n\n"
+            "💳 **Töleg maglumatlary:**\n\n"
+            "📱 **Nomer boýunça:**\n`+99362565792` / `+99361843366`\n\n"
+            "💎 **Kriptowalyuta (USDT TRC20):**\n`TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv`\n\n"
+            "⚠️ *(Nomerler arasynda geçirimde mesele dörese, terminal ulanyň)*\n\n"
+            "*(Töleg edeniňizden soň aşakdaky düwmä basyň)*"
+        )
+    else:
+        payment_info = (
+            f"📦 **Товар:** {title}\n"
+            f"💰 **Цена:** {price}\n\n"
+            "💳 **Реквизиты для оплаты:**\n\n"
+            "📱 **По номеру телефона:**\n`+99362565792` / `+99361843366`\n\n"
+            "💎 **Криптовалюта (USDT TRC20):**\n`TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv`\n\n"
+            "⚠️ *(Если возникают проблемы с переводом между номерами, используйте терминал)*\n\n"
+            "*(После перевода нажмите кнопку ниже)*"
+        )
 
     confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Я оплатил(а)", callback_data="shop_user_paid")],
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="shop_user_cancel")]
+        [InlineKeyboardButton(text=t['btn_paid'], callback_data="shop_user_paid")],
+        [InlineKeyboardButton(text=t['btn_cancel'], callback_data="shop_user_cancel")]
     ])
 
     await callback.message.edit_text(payment_info, reply_markup=confirm_kb, parse_mode="Markdown")
@@ -624,7 +819,7 @@ async def process_shop_order_data(message: types.Message, state: FSMContext):
     lang = await get_user_lang(user.id)
 
     admin_card = (
-        f"🛍 **НОВЫЙ ЗАКАЗ ИЗ МАГАДИНА!**\n\n"
+        f"🛍 **НОВЫЙ ЗАКАЗ ИЗ МАГАЗИНА!**\n\n"
         f"📦 **Товар:** {item_title}\n"
         f"💰 **Цена:** {item_price}\n"
         f"📌 **Инфо:** {item_note}\n"
@@ -641,12 +836,28 @@ async def process_shop_order_data(message: types.Message, state: FSMContext):
     await message.answer(TEXTS[lang]['shop_order_sent'])
     await state.clear()
 
-# ================= ТЕСТ 24 ЧАСА =================
+# ================= ТЕСТ 24 ЧАСА (С ПРОВЕРКОЙ НА 1 ЕДИНИЧНЫЙ ЗАПРОС) =================
 @dp.message(F.text.in_(["🎁 Тест на 24 часа", "🎁 24-hour Test", "🎁 24 sagatlyk synag"]))
 async def request_test_menu(message: types.Message):
     user = message.from_user
+    user_id = user.id
+    lang = await get_user_lang(user_id)
+
+    async with aiosqlite.connect(DB_NAME) as db:
+        async with db.execute("SELECT test_requested FROM users WHERE user_id = ?", (user_id,)) as cursor:
+            res = await cursor.fetchone()
+            has_requested = res[0] if res else 0
+
+        # Если пользователь уже делал запрос ранее
+        if has_requested == 1:
+            await message.answer(TEXTS[lang]['test_already_used'])
+            return
+
+        # Обновляем отметку о запросе в БД
+        await db.execute("UPDATE users SET test_requested = 1 WHERE user_id = ?", (user_id,))
+        await db.commit()
+
     username = f"@{user.username}" if user.username else "Нет username"
-    lang = await get_user_lang(user.id)
 
     admin_card = (
         f"🎁 **ЗАПРОС ТЕСТА НА 24 ЧАСА!**\n\n"
