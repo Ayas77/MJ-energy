@@ -28,7 +28,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
 # ================= КОНФИГУРАЦИЯ =================
-# Беру токен из безопасных переменных Railway:
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 if not BOT_TOKEN:
@@ -81,7 +80,7 @@ TEXTS = {
         'lang': "🌐 Язык / Language / Dil",
         'choose_plan': "💳 Выберите тарифный план:",
         'plan_1': "📱 100 манат ($5) — 1 устройство",
-        'plan_2': "💻 200 манат ($10) — до 3 устройств",
+        'plan_2': "💻 200 манат ($10) — Безлимит",
         'choose_payment': "💳 Выберите способ оплаты:",
         'pay_phone': "📱 Оплатить по номеру",
         'pay_crypto': "💎 Оплатить криптовалютой",
@@ -101,7 +100,7 @@ TEXTS = {
         'lang': "🌐 Язык / Language / Dil",
         'choose_plan': "💳 Choose a subscription plan:",
         'plan_1': "📱 100 TMT ($5) — 1 device",
-        'plan_2': "💻 200 TMT ($10) — up to 3 devices",
+        'plan_2': "💻 200 TMT ($10) — Unlimited",
         'choose_payment': "💳 Choose a payment method:",
         'pay_phone': "📱 Pay via Phone Number",
         'pay_crypto': "💎 Pay via Cryptocurrency",
@@ -121,7 +120,7 @@ TEXTS = {
         'lang': "🌐 Язык / Language / Dil",
         'choose_plan': "💳 Tarif meýilnamasyny saýlaň:",
         'plan_1': "📱 100 TMT ($5) — 1 enjam",
-        'plan_2': "💻 200 TMT ($10) — 3 enjama çenli",
+        'plan_2': "💻 200 TMT ($10) — Çäklendirilmedik",
         'choose_payment': "💳 Töleg usulyny saýlaň:",
         'pay_phone': "📱 Nomer boýunça tölemek",
         'pay_crypto': "💎 Kriptowalyuta bilen tölemek",
@@ -277,7 +276,7 @@ async def buy_vpn_menu(message: types.Message):
 @dp.callback_query(F.data.startswith("plan_"))
 async def plan_selected(callback: types.CallbackQuery, state: FSMContext):
     plan_type = callback.data.split("_")[1]
-    plan_name = "100 манат ($5) — 1 устройство" if plan_type == "100" else "200 манат ($10) — до 3 устройств"
+    plan_name = "100 манат ($5) — 1 устройство" if plan_type == "100" else "200 манат ($10) — Безлимит"
     
     await state.update_data(chosen_plan=plan_name, plan_price=100 if plan_type == "100" else 200)
     lang = await get_user_lang(callback.from_user.id)
@@ -300,16 +299,18 @@ async def payment_method_selected(callback: types.CallbackQuery, state: FSMConte
     if method == "phone":
         pay_info = (
             "📱 **Реквизиты для оплаты по номеру:**\n\n"
-            "`+99363842186`\n"
-            "(После перевода нажмите кнопку ниже)"
+            "📞 `+99362565792`\n"
+            "📞 `+99361843366`\n\n"
+            "⚠️ *(Если возникают проблемы с переводом между номерами, используйте терминал)*\n\n"
+            "*(После перевода нажмите кнопку ниже)*"
         )
     else:
         pay_info = (
             "💎 **Реквизиты для оплаты криптовалютой:**\n\n"
-            "• **USDT (TRC20):** `TMp6R9pX9m3kS9J41E47G9Y7w61G4fJ3aL`\n"
-            "• **USDT (TON):** `EQA22a8190c7E83b4bC41d2E7f2a1b3C4d5E6f7G8h9I0j1K`\n"
-            "• **BTC:** `1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa`\n"
-            "• **LTC:** `LTC1q9a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s`"
+            "• **USDT (TRC20):**\n`TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv`\n\n"
+            "• **BTC:**\n`3GRApv73rPGn7JMtueGAaY33SbviiQdnbR`\n\n"
+            "• **USDT / ETH (BEP20):**\n`0xbb7d1b44a4da704ecd3ce89e92b09ea5fbf5e4b1`\n\n"
+            "*(После перевода нажмите кнопку ниже)*"
         )
 
     confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
