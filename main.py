@@ -1,3 +1,20 @@
+import sys
+import subprocess
+
+# 🔧 АВТО-УСТАНОВКА ЗАВИСИМОСТЕЙ (Если Railway их пропустил)
+def install_requirements():
+    required = ["aiogram==3.15.0", "aiosqlite==0.20.0", "aiohttp==3.10.11"]
+    for package in required:
+        pkg_name = package.split("==")[0]
+        try:
+            __import__(pkg_name)
+        except ImportError:
+            print(f"📦 Модуль {pkg_name} не найден. Устанавливаем...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+install_requirements()
+
+# ================= ОСНОВНЫЕ ИМПОРТЫ =================
 import os
 import logging
 import asyncio
@@ -13,7 +30,7 @@ from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 # ================= КОНФИГУРАЦИЯ =================
 BOT_TOKEN = "ТВОЙ_ТОКЕН_БОТА"  # 👈 Вставь сюда токен бота
 ADMIN_ID = 8735103964           # Ваш Telegram ID
-ADMIN_PASSWORD = "1234"         # 👈 Укажи свой пароль для /admin
+ADMIN_PASSWORD = "1234"         # Пароль для входа в /admin
 
 DB_NAME = "bot_database.db"
 
@@ -163,7 +180,7 @@ async def cmd_start(message: types.Message):
     lang = await get_user_lang(user_id)
     await message.answer(TEXTS[lang]['welcome'], reply_markup=get_main_keyboard(lang))
 
-# ================= ПАНЕЛЬ АДМИНИСТРАТОРА С ПАРОЛЕМ =================
+# ================= ПАНЕЛЬ АДМИНИСТРАТОРА =================
 @dp.message(Command("admin"), F.from_user.id == ADMIN_ID)
 async def admin_panel_cmd(message: types.Message, state: FSMContext):
     await state.set_state(AdminState.waiting_for_password)
@@ -329,7 +346,6 @@ async def process_receipt_sent(message: types.Message, state: FSMContext):
         [InlineKeyboardButton(text="💬 Ответить / Выдать доступ", callback_data=f"reply_user_{user.id}")]
     ])
 
-    # Пересылаем чек админу с карточкой
     if message.photo:
         await bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_card, reply_markup=admin_kb, parse_mode="Markdown")
     else:
@@ -348,7 +364,6 @@ async def admin_approve_payment(callback: types.CallbackQuery):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("UPDATE users SET purchases_count = purchases_count + 1 WHERE user_id = ?", (user_id,))
         
-        # Реферальные начисления
         async with db.execute("SELECT ref_by FROM users WHERE user_id = ?", (user_id,)) as cursor:
             res = await cursor.fetchone()
             ref_by = res[0] if res else None
@@ -362,7 +377,7 @@ async def admin_approve_payment(callback: types.CallbackQuery):
             await db.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (reward, ref_by))
             
             try:
-                await bot.send_message(ref_by, f"🎉 Ввам начислено **{reward:.2f} TMT** за покупку реферала!", parse_mode="Markdown")
+                await bot.send_message(ref_by, f"🎉 Вам начислено **{reward:.2f} TMT** за покупку реферала!", parse_mode="Markdown")
             except Exception:
                 pass
 
