@@ -1,7 +1,8 @@
 import sys
 import subprocess
+import os
 
-# 🔧 АВТО-УСТАНОВКА ЗАВИСИМОСТЕЙ (Если Railway их пропустил)
+# ================= АВТО-УСТАНОВКА ЗАВИСИМОСТЕЙ =================
 def install_requirements():
     required = ["aiogram==3.15.0", "aiosqlite==0.20.0", "aiohttp==3.10.11"]
     for package in required:
@@ -15,7 +16,6 @@ def install_requirements():
 install_requirements()
 
 # ================= ОСНОВНЫЕ ИМПОРТЫ =================
-import os
 import logging
 import asyncio
 import aiosqlite
@@ -28,7 +28,12 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
 # ================= КОНФИГУРАЦИЯ =================
-BOT_TOKEN = "ТВОЙ_ТОКЕН_БОТА"  # 👈 Вставь сюда токен бота
+# Берём токен из безопасных переменных окружения Railway
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+if not BOT_TOKEN:
+    raise ValueError("❌ ОШИБКА: Переменная BOT_TOKEN не найдена в Railway Variables!")
+
 ADMIN_ID = 8735103964           # Ваш Telegram ID
 ADMIN_PASSWORD = "1234"         # Пароль для входа в /admin
 
@@ -36,7 +41,7 @@ DB_NAME = "bot_database.db"
 
 logging.basicConfig(level=logging.INFO)
 
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(token=BOT_TOKEN.strip())
 dp = Dispatcher(storage=MemoryStorage())
 
 # ================= FSM (СОСТОЯНИЯ) =================
@@ -147,7 +152,7 @@ def get_lang_keyboard():
         [InlineKeyboardButton(text="🇹🇲 Türkmen", callback_data="set_lang_tm")]
     ])
 
-# ================= ВПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =================
+# ================= ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =================
 async def get_user_lang(user_id):
     async with aiosqlite.connect(DB_NAME) as db:
         async with db.execute("SELECT language FROM users WHERE user_id = ?", (user_id,)) as cursor:
