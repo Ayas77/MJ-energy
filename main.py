@@ -555,6 +555,9 @@ async def shop_item_detail(callback: types.CallbackQuery):
         f"📦 **Товар / Услуга:** {product['title']}\n"
         f"💰 **Цена:** {product['price']}\n"
         f"📌 **Примечание:** {product['note']}\n\n"
+        "💳 **Реквизиты для оплаты:**\n"
+        "📱 `+99362565792` / `+99361843366`\n"
+        "💎 `TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv` (USDT)\n\n"
         f"👇 *Нажмите кнопку ниже, чтобы оформить заказ через оператора:*"
     )
 
@@ -576,10 +579,37 @@ async def start_product_order(callback: types.CallbackQuery, state: FSMContext):
         return
 
     await state.update_data(item_title=product['title'], item_price=product['price'], item_note=product['note'])
-    await state.set_state(UserState.waiting_for_shop_order_info)
+    
+    payment_info = (
+        f"📦 **Товар:** {product['title']}\n"
+        f"💰 **Цена:** {product['price']}\n\n"
+        "💳 **Реквизиты для оплаты:**\n\n"
+        "📱 **По номеру телефона:**\n`+99362565792` / `+99361843366`\n\n"
+        "💎 **Криптовалюта (USDT TRC20):**\n`TSRfr6UQiEuV17U9XmSfmWGZQiPA3NYqAv`\n\n"
+        "⚠️ *(Если возникают проблемы с переводом между номерами, используйте терминал)*\n\n"
+        "*(После перевода нажмите кнопку ниже)*"
+    )
 
+    confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Я оплатил(а)", callback_data="shop_user_paid")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="shop_user_cancel")]
+    ])
+
+    await callback.message.edit_text(payment_info, reply_markup=confirm_kb, parse_mode="Markdown")
+    await callback.answer()
+
+@dp.callback_query(F.data == "shop_user_paid")
+async def shop_user_paid(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(UserState.waiting_for_shop_order_info)
     lang = await get_user_lang(callback.from_user.id)
     await callback.message.answer(TEXTS[lang]['shop_prompt'])
+    await callback.answer()
+
+@dp.callback_query(F.data == "shop_user_cancel")
+async def shop_user_cancel(callback: types.CallbackQuery, state: FSMContext):
+    lang = await get_user_lang(callback.from_user.id)
+    await state.clear()
+    await callback.message.edit_text(TEXTS[lang]['order_cancelled'])
     await callback.answer()
 
 @dp.message(UserState.waiting_for_shop_order_info)
@@ -788,7 +818,7 @@ async def instruction_menu(message: types.Message):
             "3. Активируйте системный прокси.\n\n"
             "🍏 **Для macOS (MacBook):**\n"
             "1. Используйте **V2Box**, **v2rayN**, **Nekoray** или **FoXray**.\n"
-            "2. Импортируйте настройки из буфера обмена.\n"
+            "2. Импортируйте настройки из буфер обмена.\n"
             "3. Подключитесь и активируйте прокси."
         )
     elif lang == 'en':
