@@ -125,6 +125,9 @@ TEXTS = {
         'choose_payment': "💳 Выберите способ оплаты:",
         'pay_phone': "📱 Оплатить по номеру",
         'pay_crypto': "💎 Оплатить криптовалютой",
+        'btn_paid': "✅ Я оплатил(а)",
+        'btn_cancel': "❌ Отмена",
+        'order_cancelled': "❌ Заказ отменен.",
         'send_receipt_msg': "📸 Пожалуйста, отправьте чек или скриншот оплаты сюда в чат.",
         'receipt_received': "⏳ Чек получен и отправлен администратору на проверку. Ожидайте выдачи доступа!",
         'test_requested': "⏳ Запрос на тест 24 часа отправлен администратору. Ожидайте!",
@@ -148,6 +151,9 @@ TEXTS = {
         'choose_payment': "💳 Choose a payment method:",
         'pay_phone': "📱 Pay via Phone Number",
         'pay_crypto': "💎 Pay via Cryptocurrency",
+        'btn_paid': "✅ I have paid",
+        'btn_cancel': "❌ Cancel",
+        'order_cancelled': "❌ Order cancelled.",
         'send_receipt_msg': "📸 Please send the payment receipt/screenshot here in the chat.",
         'receipt_received': "⏳ Receipt received and sent to administrator for verification. Please wait!",
         'test_requested': "⏳ 24-hour test request sent to administrator. Please wait!",
@@ -171,6 +177,9 @@ TEXTS = {
         'choose_payment': "💳 Töleg usulyny saýlaň:",
         'pay_phone': "📱 Nomer boýunça tölemek",
         'pay_crypto': "💎 Kriptowalyuta bilen tölemek",
+        'btn_paid': "✅ Men töledim",
+        'btn_cancel': "❌ Ýatyrmak",
+        'order_cancelled': "❌ Sargyt ýatyryldy.",
         'send_receipt_msg': "📸 Haýyş edýäris, töleg çegini ýa-da skrinşotyny şu ýere uwradyň.",
         'receipt_received': "⏳ Çek alyndy we barlamak üçin meňzedijä ugradyldy. Garaşyň!",
         'test_requested': "⏳ 24 sagatlyk synag haýyşy meňzedijä ugradyldy. Garaşyň!",
@@ -355,6 +364,9 @@ async def payment_method_selected(callback: types.CallbackQuery, state: FSMConte
     method_name = "По номеру телефона" if method == "phone" else "Криптовалютой"
     await state.update_data(payment_method=method_name)
 
+    lang = await get_user_lang(callback.from_user.id)
+    t = TEXTS[lang]
+
     if method == "phone":
         pay_info = (
             "📱 **Реквизиты для оплаты по номеру:**\n\n"
@@ -373,7 +385,8 @@ async def payment_method_selected(callback: types.CallbackQuery, state: FSMConte
         )
 
     confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Я оплатил(а)", callback_data="user_pressed_paid")]
+        [InlineKeyboardButton(text=t['btn_paid'], callback_data="user_pressed_paid")],
+        [InlineKeyboardButton(text=t['btn_cancel'], callback_data="user_pressed_cancel")]
     ])
 
     await callback.message.edit_text(pay_info, reply_markup=confirm_kb, parse_mode="Markdown")
@@ -386,6 +399,14 @@ async def process_user_paid_button(callback: types.CallbackQuery, state: FSMCont
     
     await state.set_state(UserState.waiting_for_receipt)
     await callback.message.answer(t['send_receipt_msg'])
+    await callback.answer()
+
+@dp.callback_query(F.data == "user_pressed_cancel")
+async def process_user_cancel_button(callback: types.CallbackQuery, state: FSMContext):
+    lang = await get_user_lang(callback.from_user.id)
+    t = TEXTS[lang]
+    await state.clear()
+    await callback.message.edit_text(t['order_cancelled'])
     await callback.answer()
 
 # ================= ПОЛУЧЕНИЕ ЧЕКА И ОТПРАВКА АДМИНУ =================
