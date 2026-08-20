@@ -28,7 +28,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
 # ================= КОНФИГУРАЦИЯ =================
-# Берём токен из безопасных переменных окружения Railway
+# Беру токен из безопасных переменных Railway:
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 if not BOT_TOKEN:
@@ -297,17 +297,19 @@ async def payment_method_selected(callback: types.CallbackQuery, state: FSMConte
     method_name = "По номеру телефона" if method == "phone" else "Криптовалютой"
     await state.update_data(payment_method=method_name)
 
-    lang = await get_user_lang(callback.from_user.id)
-    
     if method == "phone":
-        pay_info = "📱 **Реквизиты для оплаты по номеру:**\n\n`+9936XXXXXXX`\n(После перевода нажмите кнопку ниже)"
+        pay_info = (
+            "📱 **Реквизиты для оплаты по номеру:**\n\n"
+            "`+99363842186`\n"
+            "(После перевода нажмите кнопку ниже)"
+        )
     else:
         pay_info = (
             "💎 **Реквизиты для оплаты криптовалютой:**\n\n"
-            "• **USDT (TRC20):** `TYourTrc20AddressHere...`\n"
-            "• **USDT (TON):** `EQYourTonAddressHere...`\n"
-            "• **BTC:** `1YourBtcAddressHere...`\n"
-            "• **LTC:** `LYourLtcAddressHere...`"
+            "• **USDT (TRC20):** `TMp6R9pX9m3kS9J41E47G9Y7w61G4fJ3aL`\n"
+            "• **USDT (TON):** `EQA22a8190c7E83b4bC41d2E7f2a1b3C4d5E6f7G8h9I0j1K`\n"
+            "• **BTC:** `1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa`\n"
+            "• **LTC:** `LTC1q9a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s`"
         )
 
     confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -550,10 +552,72 @@ async def process_broadcast_msg(message: types.Message, state: FSMContext):
     await message.answer(stats_report, parse_mode="Markdown")
     await state.clear()
 
-# ================= ИНСТРУКЦИЯ =================
+# ================= ИНСТРУКЦИЯ (ПОДРОБНАЯ) =================
 @dp.message(F.text.in_(["❓ Инструкция", "❓ Instructions", "❓ Gözükdirme"]))
 async def instruction_menu(message: types.Message):
-    text = "📖 **Инструкция по подключению VPN:**\n\n1. Скачайте приложение Happ / V2rayN / Streisand.\n2. Скопируйте полученный ключ.\n3. Импортируйте ключ в приложение и нажмите Подключить."
+    lang = await get_user_lang(message.from_user.id)
+    
+    if lang == 'ru':
+        text = (
+            "📖 **Инструкция по подключению M.J. E.VPN:**\n\n"
+            "📱 **Для Android:**\n"
+            "1. Установите приложение **v2rayNG** или **Happ**.\n"
+            "2. Скопируйте полученный ключ.\n"
+            "3. Откройте приложение и импортируйте ключ через буфер обмена.\n\n"
+            "🍏 **Для iPhone / iPad (iOS):**\n"
+            "1. Установите приложение **Streisand**, **V2Box** или **FoXray**.\n"
+            "2. Скопируйте полученный ключ.\n"
+            "3. Добавьте ключ в приложение через кнопку добавления (+).\n\n"
+            "💻 **Для Windows:**\n"
+            "1. Рекомендуется использовать **v2rayN** или **Nekoray**.\n"
+            "2. Вставьте скопированный ключ.\n"
+            "3. Активируйте системный прокси.\n\n"
+            "🍏 **Для macOS (MacBook):**\n"
+            "1. Используйте **V2Box**, **v2rayN**, **Nekoray** или **FoXray**.\n"
+            "2. Импортируйте настройки из буфера обмена.\n"
+            "3. Подключитесь и активируйте прокси."
+        )
+    elif lang == 'en':
+        text = (
+            "📖 **M.J. E.VPN Connection Instructions:**\n\n"
+            "📱 **For Android:**\n"
+            "1. Install **v2rayNG** or **Happ**.\n"
+            "2. Copy your key.\n"
+            "3. Import it from the clipboard in the app.\n\n"
+            "🍏 **For iOS (iPhone/iPad):**\n"
+            "1. Install **Streisand**, **V2Box**, or **FoXray**.\n"
+            "2. Copy your key.\n"
+            "3. Add the key using the add (+) button.\n\n"
+            "💻 **For Windows:**\n"
+            "1. We recommend **v2rayN** or **Nekoray**.\n"
+            "2. Paste the copied key.\n"
+            "3. Enable the system proxy.\n\n"
+            "🍏 **For macOS (MacBook):**\n"
+            "1. Use **V2Box**, **v2rayN**, **Nekoray** or **FoXray**.\n"
+            "2. Import settings from the clipboard.\n"
+            "3. Connect and activate the proxy."
+        )
+    else: # tm
+        text = (
+            "📖 **M.J. E.VPN birikdirmek üçin gözükdirme:**\n\n"
+            "📱 **Android üçin:**\n"
+            "1. **v2rayNG** ýa-da **Happ** programmasyny gurnaň.\n"
+            "2. Açaryňyzy göçürip alyň.\n"
+            "3. Programmada buferden import ediň.\n\n"
+            "🍏 **iPhone / iPad (iOS) üçin:**\n"
+            "1. **Streisand**, **V2Box** ýa-da **FoXray** gurnaň.\n"
+            "2. Açaryňyzy göçürip alyň.\n"
+            "3. (+) düwmesi arkaly açary goşuň.\n\n"
+            "💻 **Windows üçin:**\n"
+            "1. **v2rayN** ýa-da **Nekoray** ulanmak maslahat berilýär.\n"
+            "2. Göçürilen açary goýuň.\n"
+            "3. Ulgam proksisini (system proxy) işlediň.\n\n"
+            "🍏 **macOS (MacBook) üçin:**\n"
+            "1. **V2Box**, **v2rayN**, **Nekoray** ýa-da **FoXray** ulanyň.\n"
+            "2. Sazlamalary buferden import ediň.\n"
+            "3. Birikdiriň we proksini işlediň."
+        )
+
     await message.answer(text, parse_mode="Markdown")
 
 # ================= ЗАПУСК БОТА =================
